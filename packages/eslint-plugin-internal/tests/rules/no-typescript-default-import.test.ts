@@ -1,14 +1,27 @@
-import rule from '../../src/rules/no-typescript-default-import';
-import { batchedSingleLineTests, RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    sourceType: 'module',
-  },
-});
+import rule from '../../src/rules/no-typescript-default-import';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-typescript-default-import', rule, {
+  invalid: [
+    {
+      code: "import ts from 'typescript';",
+      errors: [{ messageId: 'noTSDefaultImport' }],
+      output: `import * as ts from 'typescript';`,
+    },
+    {
+      code: "import ts, { SyntaxKind } from 'typescript';",
+      errors: [{ messageId: 'noTSDefaultImport' }],
+      output: null,
+    },
+    {
+      code: "import ts = require('typescript');",
+      errors: [{ messageId: 'noTSDefaultImport' }],
+      output: `import * as ts from 'typescript';`,
+    },
+  ],
   valid: [
     "import { foo } from 'typescript';",
     "import ts from 'nottypescript';",
@@ -16,30 +29,4 @@ ruleTester.run('no-typescript-default-import', rule, {
     'import ts = foo;',
     "import ts = require('nottypescript');",
   ],
-  invalid: batchedSingleLineTests({
-    code: `
-import ts from 'typescript';
-import ts, { SyntaxKind } from 'typescript';
-import ts = require('typescript');
-    `,
-    output: `
-import * as ts from 'typescript';
-import ts, { SyntaxKind } from 'typescript';
-import * as ts from 'typescript';
-    `,
-    errors: [
-      {
-        messageId: 'noTSDefaultImport',
-        line: 2,
-      },
-      {
-        messageId: 'noTSDefaultImport',
-        line: 3,
-      },
-      {
-        messageId: 'noTSDefaultImport',
-        line: 4,
-      },
-    ],
-  }),
 });

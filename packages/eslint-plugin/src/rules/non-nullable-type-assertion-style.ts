@@ -1,16 +1,23 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as tsutils from 'tsutils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
-import * as util from '../util';
+import {
+  createRule,
+  getOperatorPrecedence,
+  getParserServices,
+  OperatorPrecedence,
+} from '../util';
 
-export default util.createRule({
+export default createRule({
   name: 'non-nullable-type-assertion-style',
   meta: {
+    type: 'suggestion',
     docs: {
-      description: 'Enforce non-null assertions over explicit type casts',
-      recommended: 'strict',
+      description: 'Enforce non-null assertions over explicit type assertions',
+      recommended: 'stylistic',
       requiresTypeChecking: true,
     },
     fixable: 'code',
@@ -19,19 +26,14 @@ export default util.createRule({
         'Use a ! assertion to more succinctly remove null and undefined from the type.',
     },
     schema: [],
-    type: 'suggestion',
   },
   defaultOptions: [],
 
   create(context) {
-    const parserServices = util.getParserServices(context);
-    const checker = parserServices.program.getTypeChecker();
-    const sourceCode = context.getSourceCode();
+    const services = getParserServices(context);
 
     const getTypesIfNotLoose = (node: TSESTree.Node): ts.Type[] | undefined => {
-      const type = checker.getTypeAtLocation(
-        parserServices.esTreeNodeToTSNodeMap.get(node),
-      );
+      const type = services.getTypeAtLocation(node);
 
       if (
         tsutils.isTypeFlagSet(type, ts.TypeFlags.Any | ts.TypeFlags.Unknown)
@@ -46,18 +48,17 @@ export default util.createRule({
       if (type.flags & ts.TypeFlags.TypeParameter) {
         const constraint = type.getConstraint();
         return constraint == null || couldBeNullish(constraint);
-      } else if (tsutils.isUnionType(type)) {
+      }
+
+      if (tsutils.isUnionType(type)) {
         for (const part of type.types) {
           if (couldBeNullish(part)) {
             return true;
           }
         }
         return false;
-      } else {
-        return (
-          (type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !== 0
-        );
       }
+      return (type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !== 0;
     };
 
     const sameTypeWithoutNullish = (
@@ -92,7 +93,7 @@ export default util.createRule({
     };
 
     const isConstAssertion = (
-      node: TSESTree.TSTypeAssertion | TSESTree.TSAsExpression,
+      node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
     ): boolean => {
       return (
         node.typeAnnotation.type === AST_NODE_TYPES.TSTypeReference &&
@@ -103,7 +104,7 @@ export default util.createRule({
 
     return {
       'TSAsExpression, TSTypeAssertion'(
-        node: TSESTree.TSTypeAssertion | TSESTree.TSAsExpression,
+        node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
       ): void {
         if (isConstAssertion(node)) {
           return;
@@ -120,15 +121,27 @@ export default util.createRule({
         }
 
         if (sameTypeWithoutNullish(assertedTypes, originalTypes)) {
+          const expressionSourceCode = context.sourceCode.getText(
+            node.expression,
+          );
+
+          const higherPrecedenceThanUnary =
+            getOperatorPrecedence(
+              services.esTreeNodeToTSNodeMap.get(node.expression).kind,
+              ts.SyntaxKind.Unknown,
+            ) > OperatorPrecedence.Unary;
+
           context.report({
+            node,
+            messageId: 'preferNonNullAssertion',
             fix(fixer) {
               return fixer.replaceText(
                 node,
-                `${sourceCode.getText(node.expression)}!`,
+                higherPrecedenceThanUnary
+                  ? `${expressionSourceCode}!`
+                  : `(${expressionSourceCode})!`,
               );
             },
-            messageId: 'preferNonNullAssertion',
-            node,
           });
         }
       },

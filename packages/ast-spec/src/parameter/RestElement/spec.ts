@@ -8,8 +8,8 @@ import type { AssignmentPattern } from '../AssignmentPattern/spec';
 export interface RestElement extends BaseNode {
   type: AST_NODE_TYPES.RestElement;
   argument: DestructuringPattern;
-  typeAnnotation?: TSTypeAnnotation;
-  optional?: boolean;
-  value?: AssignmentPattern;
-  decorators?: Decorator[];
+  decorators: Decorator[];
+  optional: boolean;
+  typeAnnotation: TSTypeAnnotation | undefined;
+  value: AssignmentPattern | undefined;
 }

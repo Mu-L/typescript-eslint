@@ -6,15 +6,21 @@
  */
 
 .hero {
-  background-color: var(--ifm-color-primary-darkest);
-  background-image: linear-gradient(
-    135deg,
-    var(--ifm-color-primary-darker) 0%,
-    var(--ifm-color-primary-darkest) 100%
-  );
   --ifm-font-color-base: var(--ifm-color-white);
   --ifm-button-color: var(--ifm-color-white);
+
+  background-color: var(--color-blurple-shadow);
+  background-image: linear-gradient(
+    135deg,
+    var(--color-blurple) 0%,
+    var(--color-blurple-shadow) 100%
+  );
   text-align: center;
+}
+
+.hero__logo {
+  height: 10rem;
+  width: 10rem;
 }
 
 .hero__subtitle {
@@ -23,6 +29,7 @@
 
 .buttons {
   --ifm-button-size-multiplier: 1.6;
+
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -30,7 +37,14 @@
 }
 
 .buttons a {
-  margin: 1rem 1rem;
+  --ifm-font-color-base: var(--ifm-color-white);
+  --ifm-button-color: var(--ifm-color-white);
+
+  margin: 1rem;
+}
+
+.buttonCentered {
+  margin: auto;
 }
 
 .buttonPrimary {

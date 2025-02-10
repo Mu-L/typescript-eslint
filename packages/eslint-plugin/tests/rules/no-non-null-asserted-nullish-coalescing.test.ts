@@ -1,9 +1,8 @@
-import rule from '../../src/rules/no-non-null-asserted-nullish-coalescing';
-import { noFormat, RuleTester } from '../RuleTester';
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/no-non-null-asserted-nullish-coalescing';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-non-null-asserted-nullish-coalescing', rule, {
   valid: [

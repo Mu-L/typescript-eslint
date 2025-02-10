@@ -1,54 +1,58 @@
 import type { TSESLint } from '@typescript-eslint/utils';
+import type * as ESQuery from 'esquery';
+import type * as ts from 'typescript';
 
 export type CompilerFlags = Record<string, unknown>;
 
 export type SourceType = TSESLint.SourceType;
 
 export type RulesRecord = TSESLint.Linter.RulesRecord;
-export type RuleEntry = TSESLint.Linter.RuleEntry;
 
 export interface RuleDetails {
-  name: string;
   description?: string;
+  name: string;
+  url?: string;
 }
 
-export type TabType = 'code' | 'tsconfig' | 'eslintrc';
+export type TabType = 'code' | 'eslintrc' | 'tsconfig';
+
+export type ConfigFileType = `${ts.Extension}`;
+
+export type ConfigShowAst = 'es' | 'scope' | 'ts' | 'types' | false;
 
 export interface ConfigModel {
-  jsx?: boolean;
-  sourceType?: SourceType;
-  eslintrc: string;
-  tsconfig: string;
   code: string;
+  eslintrc: string;
+  esQuery?: {
+    filter?: string;
+    selector: ESQuery.Selector;
+  };
+  fileType?: ConfigFileType;
+  scroll?: boolean;
+  showAST?: ConfigShowAst;
+  showTokens?: boolean;
+  sourceType?: SourceType;
   ts: string;
-  showAST?: boolean | 'ts' | 'es' | 'scope';
+  tsconfig: string;
 }
 
-export interface SelectedPosition {
-  line: number;
-  column: number;
-}
-
-export interface SelectedRange {
-  start: SelectedPosition;
-  end: SelectedPosition;
-}
+export type SelectedRange = [number, number];
 
 export interface ErrorItem {
-  message: string;
+  fixer?: { fix(): void; message: string };
   location: string;
+  message: string;
   severity: number;
-  suggestions: { message: string; fix(): void }[];
-  fixer?: { message: string; fix(): void };
+  suggestions: { fix(): void; message: string }[];
 }
 
 export interface ErrorGroup {
   group: string;
-  uri?: string;
   items: ErrorItem[];
+  uri?: string;
 }
 
-export type EslintRC = Record<string, unknown> & { rules: RulesRecord };
-export type TSConfig = Record<string, unknown> & {
+export type EslintRC = { rules: RulesRecord } & Record<string, unknown>;
+export type TSConfig = {
   compilerOptions: CompilerFlags;
-};
+} & Record<string, unknown>;

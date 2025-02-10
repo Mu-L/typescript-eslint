@@ -3,7 +3,7 @@
 exports[`AST Fixtures declaration TSImportEqualsDeclaration external-module-ref-string Babel - AST 1`] = `
 Program {
   type: "Program",
-  body: Array [
+  body: [
     TSImportEqualsDeclaration {
       type: "TSImportEqualsDeclaration",
       id: Identifier {
@@ -46,7 +46,7 @@ Program {
       },
     },
   ],
-  sourceType: "script",
+  sourceType: "module",
 
   range: [0, 27],
   loc: {

@@ -1,13 +1,16 @@
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
+import * as path from 'node:path';
+
 import rule from '../../src/rules/no-unnecessary-boolean-literal-compare';
-import { getFixturesRootDir, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootDir = getFixturesRootDir();
 const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    ecmaVersion: 2015,
-    tsconfigRootDir: rootDir,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootDir,
+    },
   },
 });
 
@@ -54,6 +57,18 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
       varTrueOrStringOrUndefined == true;
     `,
     `
+      const test: <T>(someCondition: T) => void = someCondition => {
+        if (someCondition === true) {
+        }
+      };
+    `,
+    `
+      const test: <T>(someCondition: boolean | string) => void = someCondition => {
+        if (someCondition === true) {
+        }
+      };
+    `,
+    `
       declare const varBooleanOrUndefined: boolean | undefined;
       varBooleanOrUndefined === true;
     `,
@@ -71,8 +86,62 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
       `,
       options: [{ allowComparingNullableBooleansToTrue: false }],
     },
+    {
+      code: `
+        const test: <T extends boolean | undefined>(
+          someCondition: T,
+        ) => void = someCondition => {
+          if (someCondition === true) {
+          }
+        };
+      `,
+      options: [{ allowComparingNullableBooleansToFalse: false }],
+    },
+    {
+      code: `
+        const test: <T extends boolean | undefined>(
+          someCondition: T,
+        ) => void = someCondition => {
+          if (someCondition === false) {
+          }
+        };
+      `,
+      options: [{ allowComparingNullableBooleansToTrue: false }],
+    },
     "'false' === true;",
     "'true' === false;",
+    `
+const unconstrained: <T>(someCondition: T) => void = someCondition => {
+  if (someCondition === true) {
+  }
+};
+    `,
+    `
+const extendsUnknown: <T extends unknown>(
+  someCondition: T,
+) => void = someCondition => {
+  if (someCondition === true) {
+  }
+};
+    `,
+    {
+      code: `
+function test(a?: boolean): boolean {
+  // eslint-disable-next-line
+  return a !== false;
+}
+      `,
+      languageOptions: {
+        parserOptions: {
+          tsconfigRootDir: path.join(rootDir, 'unstrict'),
+        },
+      },
+      options: [
+        {
+          allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: true,
+        },
+      ],
+    },
   ],
 
   invalid: [
@@ -134,12 +203,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varTrueOrUndefined === true) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToTrue: false }],
       errors: [
         {
           messageId: 'comparingNullableToTrueDirect',
         },
       ],
+      options: [{ allowComparingNullableBooleansToTrue: false }],
       output: `
         declare const varTrueOrUndefined: true | undefined;
         if (varTrueOrUndefined) {
@@ -152,12 +221,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varFalseOrNull !== true) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToTrue: false }],
       errors: [
         {
           messageId: 'comparingNullableToTrueNegated',
         },
       ],
+      options: [{ allowComparingNullableBooleansToTrue: false }],
       output: `
         declare const varFalseOrNull: false | null;
         if (!varFalseOrNull) {
@@ -171,12 +240,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varBooleanOrNull === false && otherBoolean) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToFalse: false }],
       errors: [
         {
           messageId: 'comparingNullableToFalse',
         },
       ],
+      options: [{ allowComparingNullableBooleansToFalse: false }],
       output: `
         declare const varBooleanOrNull: boolean | null;
         declare const otherBoolean: boolean;
@@ -191,12 +260,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (!(varBooleanOrNull === false) || otherBoolean) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToFalse: false }],
       errors: [
         {
           messageId: 'comparingNullableToFalse',
         },
       ],
+      options: [{ allowComparingNullableBooleansToFalse: false }],
       output: `
         declare const varBooleanOrNull: boolean | null;
         declare const otherBoolean: boolean;
@@ -211,12 +280,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varTrueOrFalseOrUndefined !== false && !otherBoolean) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToFalse: false }],
       errors: [
         {
           messageId: 'comparingNullableToFalse',
         },
       ],
+      options: [{ allowComparingNullableBooleansToFalse: false }],
       output: `
         declare const varTrueOrFalseOrUndefined: true | false | undefined;
         declare const otherBoolean: boolean;
@@ -257,6 +326,304 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (!varBoolean) {
         }
       `,
+    },
+    {
+      code: noFormat`
+        declare const x;
+        if ((x instanceof Error) === false) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const x;
+        if (!(x instanceof Error)) {
+        }
+      `,
+    },
+    {
+      code: noFormat`
+        declare const x;
+        if (false === (x instanceof Error)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const x;
+        if (!(x instanceof Error)) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const x;
+        if (x instanceof Error === false) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const x;
+        if (!(x instanceof Error)) {
+        }
+      `,
+    },
+    {
+      code: noFormat`
+        declare const x;
+        if (typeof x === 'string' === false) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const x;
+        if (!(typeof x === 'string')) {
+        }
+      `,
+    },
+    {
+      code: noFormat`
+        declare const x;
+        if (x instanceof Error === (false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const x;
+        if (!(x instanceof Error)) {
+        }
+      `,
+    },
+    {
+      code: noFormat`
+        declare const x;
+        if ((false) === x instanceof Error) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const x;
+        if (!(x instanceof Error)) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (!(varBoolean !== false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (!varBoolean) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (!(varBoolean === false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (varBoolean) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (!(varBoolean instanceof Event == false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (varBoolean instanceof Event) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (varBoolean instanceof Event == false) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (!(varBoolean instanceof Event)) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (!((varBoolean ?? false) !== false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (!(varBoolean ?? false)) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (!((varBoolean ?? false) === false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (varBoolean ?? false) {
+        }
+      `,
+    },
+    {
+      code: `
+        declare const varBoolean: boolean;
+        if (!((varBoolean ?? true) !== false)) {
+        }
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        declare const varBoolean: boolean;
+        if (!(varBoolean ?? true)) {
+        }
+      `,
+    },
+    {
+      code: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (someCondition === true) {
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (someCondition) {
+          }
+        };
+      `,
+    },
+    {
+      code: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!(someCondition !== false)) {
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!someCondition) {
+          }
+        };
+      `,
+    },
+    {
+      code: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!((someCondition ?? true) !== false)) {
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!(someCondition ?? true)) {
+          }
+        };
+      `,
+    },
+    {
+      code: `
+function foo(): boolean {}
+      `,
+      errors: [
+        {
+          messageId: 'noStrictNullCheck',
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          tsconfigRootDir: path.join(rootDir, 'unstrict'),
+        },
+      },
+      options: [
+        {
+          allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: false,
+        },
+      ],
     },
   ],
 });

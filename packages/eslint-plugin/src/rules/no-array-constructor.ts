@@ -1,16 +1,17 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule, isOptionalCallExpression } from '../util';
 
-export default util.createRule({
+export default createRule({
   name: 'no-array-constructor',
   meta: {
     type: 'suggestion',
     docs: {
       description: 'Disallow generic `Array` constructors',
-      recommended: 'error',
       extendsBaseRule: true,
+      recommended: 'recommended',
     },
     fixable: 'code',
     messages: {
@@ -31,8 +32,8 @@ export default util.createRule({
         node.arguments.length !== 1 &&
         node.callee.type === AST_NODE_TYPES.Identifier &&
         node.callee.name === 'Array' &&
-        !node.typeParameters &&
-        !util.isOptionalCallExpression(node)
+        !node.typeArguments &&
+        !isOptionalCallExpression(node)
       ) {
         context.report({
           node,
@@ -41,7 +42,7 @@ export default util.createRule({
             if (node.arguments.length === 0) {
               return fixer.replaceText(node, '[]');
             }
-            const fullText = context.getSourceCode().getText(node);
+            const fullText = context.sourceCode.getText(node);
             const preambleLength = node.callee.range[1] - node.range[0];
 
             return fixer.replaceText(

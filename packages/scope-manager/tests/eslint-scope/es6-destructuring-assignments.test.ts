@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/dot-notation -- ['implicit'] is private */
 import {
   expectToBeForScope,
   expectToBeFunctionScope,
@@ -6,7 +7,7 @@ import {
   expectToBeParameterDefinition,
   getRealVariables,
   parseAndAnalyze,
-} from '../util';
+} from '../test-utils';
 
 describe('ES6 destructuring assignments', () => {
   it('Pattern in var in ForInStatement', () => {

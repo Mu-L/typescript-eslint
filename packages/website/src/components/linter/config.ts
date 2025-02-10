@@ -1,26 +1,47 @@
-import type { ParseSettings } from '@typescript-eslint/typescript-estree/dist/parseSettings';
+import type { ParseSettings } from '@typescript-eslint/typescript-estree/use-at-your-own-risk';
+import type { ClassicConfig } from '@typescript-eslint/utils/ts-eslint';
 
-export const parseSettings: ParseSettings = {
+export const PARSER_NAME = '@typescript-eslint/parser';
+
+export const defaultParseSettings: ParseSettings = {
+  allowInvalidAST: false,
   code: '',
+  codeFullText: '',
   comment: true,
   comments: [],
-  createDefaultProgram: false,
   debugLevel: new Set(),
+  errorOnTypeScriptSyntacticAndSemanticIssues: false,
   errorOnUnknownASTType: false,
   extraFileExtensions: [],
   filePath: '',
-  jsx: false,
+  // JSDocParsingMode was added in TS 5.3.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  jsDocParsingMode: window.ts?.JSDocParsingMode?.ParseAll,
+  jsx: true,
   loc: true,
-  // eslint-disable-next-line no-console
   log: console.log,
   preserveNodeMaps: true,
-  projects: [],
-  range: true,
-  tokens: [],
-  tsconfigRootDir: '/',
-  errorOnTypeScriptSyntacticAndSemanticIssues: false,
-  EXPERIMENTAL_useSourceOfProjectReferenceRedirect: false,
-  singleRun: false,
   programs: null,
-  moduleResolver: '',
+  projects: new Map(),
+  projectService: undefined,
+  range: true,
+  singleRun: false,
+  suppressDeprecatedPropertyWarnings: false,
+  tokens: [],
+  tsconfigMatchCache: new Map(),
+  tsconfigRootDir: '/',
+};
+
+export const defaultEslintConfig: ClassicConfig.Config = {
+  parser: PARSER_NAME,
+  parserOptions: {
+    ecmaFeatures: {
+      globalReturn: false,
+      jsx: true,
+    },
+    ecmaVersion: 'latest',
+    project: ['./tsconfig.json'],
+    sourceType: 'module',
+  },
+  rules: {},
 };

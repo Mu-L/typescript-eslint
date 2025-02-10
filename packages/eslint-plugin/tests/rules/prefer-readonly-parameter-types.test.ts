@@ -1,12 +1,16 @@
-import type { TSESLint } from '@typescript-eslint/utils';
+import type { InvalidTestCase } from '@typescript-eslint/rule-tester';
 
-import rule from '../../src/rules/prefer-readonly-parameter-types';
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
+
 import type {
   InferMessageIdsTypeFromRule,
   InferOptionsTypeFromRule,
 } from '../../src/util';
+
+import rule from '../../src/rules/prefer-readonly-parameter-types';
 import { readonlynessOptionsDefaults } from '../../src/util';
-import { getFixturesRootDir, noFormat, RuleTester } from '../RuleTester';
+import { dedupeTestCases } from '../dedupeTestCases';
+import { getFixturesRootDir } from '../RuleTester';
 
 type MessageIds = InferMessageIdsTypeFromRule<typeof rule>;
 type Options = InferOptionsTypeFromRule<typeof rule>;
@@ -14,10 +18,11 @@ type Options = InferOptionsTypeFromRule<typeof rule>;
 const rootPath = getFixturesRootDir();
 
 const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    tsconfigRootDir: rootPath,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootPath,
+    },
   },
 });
 
@@ -255,11 +260,7 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
           ) {}
         }
       `,
-      options: [
-        {
-          checkParameterProperties: true,
-        },
-      ],
+      options: [{ checkParameterProperties: true }],
     },
     {
       code: `
@@ -272,11 +273,7 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
           ) {}
         }
       `,
-      options: [
-        {
-          checkParameterProperties: false,
-        },
-      ],
+      options: [{ checkParameterProperties: false }],
     },
 
     // type functions
@@ -290,7 +287,7 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
         new (arg: readonly string[]): void;
       }
     `, // TSConstructSignatureDeclaration
-    noFormat`const x = { foo(arg: readonly string[]): void; };`, // TSEmptyBodyFunctionExpression
+    noFormat`class Foo { foo(arg: readonly string[]): void; };`, // TSEmptyBodyFunctionExpression
     'function foo(arg: readonly string[]);', // TSDeclareFunction
     'type Foo = (arg: readonly string[]) => void;', // TSFunctionType
     `
@@ -364,14 +361,14 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       ],
     },
     {
-      name: 'circular readonly types (Bug: #4476)',
       code: `
         interface Obj {
           readonly [K: string]: Obj;
         }
-        
+
         function foo(event: Obj): void {}
       `,
+      name: 'circular readonly types (Bug: #4476)',
       options: [
         {
           checkParameterProperties: true,
@@ -381,53 +378,133 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       ],
     },
     {
-      name: 'circular readonly types (Bug: #5875)',
       code: `
         interface Obj1 {
           readonly [K: string]: Obj2;
         }
-        
+
         interface Obj2 {
           readonly [K: string]: Obj1;
         }
-        
+
         function foo(event: Obj1): void {}
       `,
+      name: 'circular readonly types (Bug: #5875)',
       options: [
         {
           checkParameterProperties: true,
           ignoreInferredTypes: false,
           ...readonlynessOptionsDefaults,
+        },
+      ],
+    },
+    // Allowlist
+    {
+      code: `
+        interface Foo {
+          readonly prop: RegExp;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      options: [
+        {
+          allow: [{ from: 'lib', name: 'RegExp' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Foo {
+          prop: RegExp;
+        }
+
+        function foo(arg: Readonly<Foo>) {}
+      `,
+      options: [
+        {
+          allow: [{ from: 'lib', name: 'RegExp' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Foo {
+          prop: string;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      options: [
+        {
+          allow: [{ from: 'file', name: 'Foo' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Bar {
+          prop: string;
+        }
+        interface Foo {
+          readonly prop: Bar;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      options: [
+        {
+          allow: [{ from: 'file', name: 'Foo' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Bar {
+          prop: string;
+        }
+        interface Foo {
+          readonly prop: Bar;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      options: [
+        {
+          allow: [{ from: 'file', name: 'Bar' }],
         },
       ],
     },
   ],
   invalid: [
     // arrays
-    ...arrays.map<TSESLint.InvalidTestCase<MessageIds, Options>>(baseType => {
-      const type = baseType
-        .replace(/readonly /g, '')
-        .replace(/Readonly<(.+?)>/g, '$1')
-        .replace(/ReadonlyArray/g, 'Array');
-      return {
-        code: `function foo(arg: ${type}) {}`,
-        errors: [
-          {
-            messageId: 'shouldBeReadonly',
-            column: 14,
-            endColumn: 19 + type.length,
-          },
-        ],
-      };
-    }),
+    // Removing readonly causes duplicates
+    ...dedupeTestCases(
+      arrays.map<InvalidTestCase<MessageIds, Options>>(baseType => {
+        const type = baseType
+          .replaceAll('readonly ', '')
+          .replaceAll(/Readonly<(.+?)>/g, '$1')
+          .replaceAll('ReadonlyArray', 'Array');
+        return {
+          code: `function foo(arg: ${type}) {}`,
+          errors: [
+            {
+              column: 14,
+              endColumn: 19 + type.length,
+              messageId: 'shouldBeReadonly',
+            },
+          ],
+        };
+      }),
+    ),
     // nested arrays
     {
       code: 'function foo(arg: readonly string[][]) {}',
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 14,
           endColumn: 38,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -435,9 +512,9 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       code: 'function foo(arg: Readonly<string[][]>) {}',
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 14,
           endColumn: 39,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -445,22 +522,22 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       code: 'function foo(arg: ReadonlyArray<Array<string>>) {}',
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 14,
           endColumn: 47,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
 
     // objects
-    ...objects.map<TSESLint.InvalidTestCase<MessageIds, Options>>(type => {
+    ...objects.map<InvalidTestCase<MessageIds, Options>>(type => {
       return {
         code: `function foo(arg: ${type}) {}`,
         errors: [
           {
-            messageId: 'shouldBeReadonly',
             column: 14,
             endColumn: 19 + type.length,
+            messageId: 'shouldBeReadonly',
           },
         ],
       };
@@ -475,11 +552,11 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 2,
           column: 22,
-          endLine: 6,
           endColumn: 10,
+          endLine: 6,
+          line: 2,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -490,11 +567,11 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 2,
           column: 22,
-          endLine: 2,
           endColumn: 52,
+          endLine: 2,
+          line: 2,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -504,19 +581,19 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 2,
           column: 22,
-          endLine: 2,
           endColumn: 52,
+          endLine: 2,
+          line: 2,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
 
     // weird intersections
-    ...weirdIntersections.map<TSESLint.InvalidTestCase<MessageIds, Options>>(
+    ...weirdIntersections.map<InvalidTestCase<MessageIds, Options>>(
       baseCode => {
-        const code = baseCode.replace(/readonly /g, '');
+        const code = baseCode.replaceAll('readonly ', '');
         return {
           code,
           errors: [{ messageId: 'shouldBeReadonly' }],
@@ -532,11 +609,11 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 5,
           column: 22,
-          endLine: 5,
           endColumn: 31,
+          endLine: 5,
+          line: 5,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -549,11 +626,11 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 5,
           column: 22,
-          endLine: 5,
           endColumn: 31,
+          endLine: 5,
+          line: 5,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -570,41 +647,37 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
           ) {}
         }
       `,
-      options: [
-        {
-          checkParameterProperties: true,
-        },
-      ],
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 4,
           column: 21,
-          endLine: 4,
           endColumn: 35,
+          endLine: 4,
+          line: 4,
+          messageId: 'shouldBeReadonly',
         },
         {
-          messageId: 'shouldBeReadonly',
-          line: 5,
           column: 20,
-          endLine: 5,
           endColumn: 34,
+          endLine: 5,
+          line: 5,
+          messageId: 'shouldBeReadonly',
         },
         {
-          messageId: 'shouldBeReadonly',
-          line: 6,
           column: 23,
-          endLine: 6,
           endColumn: 37,
+          endLine: 6,
+          line: 6,
+          messageId: 'shouldBeReadonly',
         },
         {
-          messageId: 'shouldBeReadonly',
-          line: 7,
           column: 22,
-          endLine: 7,
           endColumn: 36,
+          endLine: 7,
+          line: 7,
+          messageId: 'shouldBeReadonly',
         },
       ],
+      options: [{ checkParameterProperties: true }],
     },
     {
       code: `
@@ -618,20 +691,16 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
           ) {}
         }
       `,
-      options: [
-        {
-          checkParameterProperties: false,
-        },
-      ],
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 8,
           column: 13,
-          endLine: 8,
           endColumn: 27,
+          endLine: 8,
+          line: 8,
+          messageId: 'shouldBeReadonly',
         },
       ],
+      options: [{ checkParameterProperties: false }],
     },
 
     // type functions
@@ -644,9 +713,9 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 12,
           endColumn: 25,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -659,20 +728,20 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 16,
           endColumn: 29,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
     {
       // TSEmptyBodyFunctionExpression
-      code: noFormat`const x = { foo(arg: string[]): void; };`,
+      code: noFormat`class Foo { foo(arg: string[]): void; };`,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 17,
           endColumn: 30,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -681,9 +750,9 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       code: 'function foo(arg: string[]);',
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 14,
           endColumn: 27,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -692,9 +761,9 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       code: 'type Foo = (arg: string[]) => void;',
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 13,
           endColumn: 26,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -707,9 +776,9 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
           column: 15,
           endColumn: 28,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -725,10 +794,10 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 5,
           column: 22,
           endColumn: 30,
+          line: 5,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -741,10 +810,10 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 5,
           column: 22,
           endColumn: 40,
+          line: 5,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -761,10 +830,10 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 8,
           column: 22,
           endColumn: 30,
+          line: 8,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -780,10 +849,10 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 8,
           column: 22,
           endColumn: 40,
+          line: 8,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -799,10 +868,10 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 8,
           column: 22,
           endColumn: 30,
+          line: 8,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -818,10 +887,10 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 8,
           column: 26,
           endColumn: 41,
+          line: 8,
+          messageId: 'shouldBeReadonly',
         },
       ],
     },
@@ -837,17 +906,17 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
 
         acceptsCallback<CallbackOptions>((options: CallbackOptions) => {});
       `,
+      errors: [
+        {
+          column: 43,
+          endColumn: 67,
+          line: 10,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
       options: [
         {
           ignoreInferredTypes: true,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'shouldBeReadonly',
-          line: 10,
-          column: 43,
-          endColumn: 67,
         },
       ],
     },
@@ -862,10 +931,147 @@ ruleTester.run('prefer-readonly-parameter-types', rule, {
       `,
       errors: [
         {
-          messageId: 'shouldBeReadonly',
-          line: 6,
           column: 22,
           endColumn: 33,
+          line: 6,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/3405
+    {
+      code: `
+        type MyType<T> = {
+          [K in keyof T]: 'cat' | 'dog' | T[K];
+        };
+
+        function method<A extends any[] = string[]>(value: MyType<A>) {
+          return value;
+        }
+
+        method(['cat', 'dog']);
+        method<'mouse'[]>(['cat', 'mouse']);
+      `,
+      errors: [{ line: 6, messageId: 'shouldBeReadonly' }],
+    },
+    // Allowlist
+    {
+      code: `
+        function foo(arg: RegExp) {}
+      `,
+      errors: [
+        {
+          column: 22,
+          endColumn: 33,
+          line: 2,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+      options: [
+        {
+          allow: [{ from: 'file', name: 'Foo' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Foo {
+          readonly prop: RegExp;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      errors: [
+        {
+          column: 22,
+          endColumn: 30,
+          line: 6,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+      options: [
+        {
+          allow: [{ from: 'file', name: 'Bar' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Foo {
+          readonly prop: RegExp;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      errors: [
+        {
+          column: 22,
+          endColumn: 30,
+          line: 6,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+      options: [
+        {
+          allow: [{ from: 'lib', name: 'Foo' }],
+        },
+      ],
+    },
+    {
+      code: `
+        interface Foo {
+          readonly prop: RegExp;
+        }
+
+        function foo(arg: Foo) {}
+      `,
+      errors: [
+        {
+          column: 22,
+          endColumn: 30,
+          line: 6,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+      options: [
+        {
+          allow: [{ from: 'package', name: 'Foo', package: 'foo-lib' }],
+        },
+      ],
+    },
+    {
+      code: `
+        function foo(arg: RegExp) {}
+      `,
+      errors: [
+        {
+          column: 22,
+          endColumn: 33,
+          line: 2,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+      options: [
+        {
+          allow: [{ from: 'file', name: 'RegExp' }],
+        },
+      ],
+    },
+    {
+      code: `
+        function foo(arg: RegExp) {}
+      `,
+      errors: [
+        {
+          column: 22,
+          endColumn: 33,
+          line: 2,
+          messageId: 'shouldBeReadonly',
+        },
+      ],
+      options: [
+        {
+          allow: [{ from: 'package', name: 'RegExp', package: 'regexp-lib' }],
         },
       ],
     },

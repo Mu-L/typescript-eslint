@@ -1,14 +1,3 @@
-import {
-  isBinaryExpression,
-  isCallExpression,
-  isIdentifier,
-  isJsxExpression,
-  isNewExpression,
-  isParameterDeclaration,
-  isPropertyAssignment,
-  isPropertyDeclaration,
-  isVariableDeclaration,
-} from 'tsutils';
 import * as ts from 'typescript';
 
 /**
@@ -21,34 +10,35 @@ export function getContextualType(
   node: ts.Expression,
 ): ts.Type | undefined {
   const parent = node.parent;
-  if (!parent) {
-    return;
-  }
 
-  if (isCallExpression(parent) || isNewExpression(parent)) {
+  if (ts.isCallExpression(parent) || ts.isNewExpression(parent)) {
     if (node === parent.expression) {
       // is the callee, so has no contextual type
       return;
     }
   } else if (
-    isVariableDeclaration(parent) ||
-    isPropertyDeclaration(parent) ||
-    isParameterDeclaration(parent)
+    ts.isVariableDeclaration(parent) ||
+    ts.isPropertyDeclaration(parent) ||
+    ts.isParameter(parent)
   ) {
     return parent.type ? checker.getTypeFromTypeNode(parent.type) : undefined;
-  } else if (isJsxExpression(parent)) {
+  } else if (ts.isJsxExpression(parent)) {
     return checker.getContextualType(parent);
-  } else if (isPropertyAssignment(parent) && isIdentifier(node)) {
+  } else if (
+    ts.isIdentifier(node) &&
+    (ts.isPropertyAssignment(parent) ||
+      ts.isShorthandPropertyAssignment(parent))
+  ) {
     return checker.getContextualType(node);
   } else if (
-    isBinaryExpression(parent) &&
+    ts.isBinaryExpression(parent) &&
     parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
     parent.right === node
   ) {
     // is RHS of assignment
     return checker.getTypeAtLocation(parent.left);
   } else if (
-    ![ts.SyntaxKind.TemplateSpan, ts.SyntaxKind.JsxExpression].includes(
+    ![ts.SyntaxKind.JsxExpression, ts.SyntaxKind.TemplateSpan].includes(
       parent.kind,
     )
   ) {

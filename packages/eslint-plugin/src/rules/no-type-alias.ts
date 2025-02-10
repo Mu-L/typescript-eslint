@@ -1,97 +1,107 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES, AST_TOKEN_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule } from '../util';
 
 type Values =
   | 'always'
-  | 'never'
-  | 'in-unions'
   | 'in-intersections'
-  | 'in-unions-and-intersections';
-const enumValues: Values[] = [
-  'always',
-  'never',
-  'in-unions',
-  'in-intersections',
-  'in-unions-and-intersections',
-];
+  | 'in-unions'
+  | 'in-unions-and-intersections'
+  | 'never';
 
-type Options = [
+export type Options = [
   {
     allowAliases?: Values;
     allowCallbacks?: 'always' | 'never';
     allowConditionalTypes?: 'always' | 'never';
     allowConstructors?: 'always' | 'never';
+    allowGenerics?: 'always' | 'never';
     allowLiterals?: Values;
     allowMappedTypes?: Values;
     allowTupleTypes?: Values;
-    allowGenerics?: 'always' | 'never';
   },
 ];
-type MessageIds = 'noTypeAlias' | 'noCompositionAlias';
+export type MessageIds = 'noCompositionAlias' | 'noTypeAlias';
 
 type CompositionType =
-  | AST_NODE_TYPES.TSUnionType
-  | AST_NODE_TYPES.TSIntersectionType;
+  | AST_NODE_TYPES.TSIntersectionType
+  | AST_NODE_TYPES.TSUnionType;
 interface TypeWithLabel {
-  node: TSESTree.Node;
   compositionType: CompositionType | null;
+  node: TSESTree.Node;
 }
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'no-type-alias',
   meta: {
     type: 'suggestion',
+    deprecated: true,
     docs: {
       description: 'Disallow type aliases',
       // too opinionated to be recommended
-      recommended: false,
     },
     messages: {
-      noTypeAlias: 'Type {{alias}} are not allowed.',
       noCompositionAlias:
         '{{typeName}} in {{compositionType}} types are not allowed.',
+      noTypeAlias: 'Type {{alias}} are not allowed.',
     },
     schema: [
       {
         type: 'object',
-        properties: {
-          allowAliases: {
-            description: 'Whether to allow direct one-to-one type aliases.',
-            enum: enumValues,
+        $defs: {
+          expandedOptions: {
+            type: 'string',
+            enum: [
+              'always',
+              'never',
+              'in-unions',
+              'in-intersections',
+              'in-unions-and-intersections',
+            ] satisfies Values[],
           },
-          allowCallbacks: {
-            description: 'Whether to allow type aliases for callbacks.',
-            enum: ['always', 'never'],
-          },
-          allowConditionalTypes: {
-            description: 'Whether to allow type aliases for conditional types.',
-            enum: ['always', 'never'],
-          },
-          allowConstructors: {
-            description: 'Whether to allow type aliases with constructors.',
-            enum: ['always', 'never'],
-          },
-          allowLiterals: {
-            description:
-              'Whether to allow type aliases with object literal types.',
-            enum: enumValues,
-          },
-          allowMappedTypes: {
-            description: 'Whether to allow type aliases with mapped types.',
-            enum: enumValues,
-          },
-          allowTupleTypes: {
-            description: 'Whether to allow type aliases with tuple types.',
-            enum: enumValues,
-          },
-          allowGenerics: {
-            description: 'Whether to allow type aliases with generic types.',
+          simpleOptions: {
+            type: 'string',
             enum: ['always', 'never'],
           },
         },
         additionalProperties: false,
+        properties: {
+          allowAliases: {
+            $ref: '#/items/0/$defs/expandedOptions',
+            description: 'Whether to allow direct one-to-one type aliases.',
+          },
+          allowCallbacks: {
+            $ref: '#/items/0/$defs/simpleOptions',
+            description: 'Whether to allow type aliases for callbacks.',
+          },
+          allowConditionalTypes: {
+            $ref: '#/items/0/$defs/simpleOptions',
+            description: 'Whether to allow type aliases for conditional types.',
+          },
+          allowConstructors: {
+            $ref: '#/items/0/$defs/simpleOptions',
+            description: 'Whether to allow type aliases with constructors.',
+          },
+          allowGenerics: {
+            $ref: '#/items/0/$defs/simpleOptions',
+            description: 'Whether to allow type aliases with generic types.',
+          },
+          allowLiterals: {
+            $ref: '#/items/0/$defs/expandedOptions',
+            description:
+              'Whether to allow type aliases with object literal types.',
+          },
+          allowMappedTypes: {
+            $ref: '#/items/0/$defs/expandedOptions',
+            description: 'Whether to allow type aliases with mapped types.',
+          },
+          allowTupleTypes: {
+            $ref: '#/items/0/$defs/expandedOptions',
+            description: 'Whether to allow type aliases with tuple types.',
+          },
+        },
       },
     ],
   },
@@ -101,10 +111,10 @@ export default util.createRule<Options, MessageIds>({
       allowCallbacks: 'never',
       allowConditionalTypes: 'never',
       allowConstructors: 'never',
+      allowGenerics: 'never',
       allowLiterals: 'never',
       allowMappedTypes: 'never',
       allowTupleTypes: 'never',
-      allowGenerics: 'never',
     },
   ],
   create(
@@ -115,10 +125,10 @@ export default util.createRule<Options, MessageIds>({
         allowCallbacks,
         allowConditionalTypes,
         allowConstructors,
+        allowGenerics,
         allowLiterals,
         allowMappedTypes,
         allowTupleTypes,
-        allowGenerics,
       },
     ],
   ) {
@@ -136,11 +146,11 @@ export default util.createRule<Options, MessageIds>({
     const aliasTypes = new Set([
       AST_NODE_TYPES.TSArrayType,
       AST_NODE_TYPES.TSImportType,
-      AST_NODE_TYPES.TSTypeReference,
-      AST_NODE_TYPES.TSLiteralType,
-      AST_NODE_TYPES.TSTypeQuery,
       AST_NODE_TYPES.TSIndexedAccessType,
+      AST_NODE_TYPES.TSLiteralType,
       AST_NODE_TYPES.TSTemplateLiteralType,
+      AST_NODE_TYPES.TSTypeQuery,
+      AST_NODE_TYPES.TSTypeReference,
     ]);
 
     /**
@@ -205,14 +215,13 @@ export default util.createRule<Options, MessageIds>({
       if (type.node.type === AST_NODE_TYPES.TSTupleType) {
         return true;
       }
-      if (type.node.type === AST_NODE_TYPES.TSTypeOperator) {
-        if (
-          ['keyof', 'readonly'].includes(type.node.operator) &&
-          type.node.typeAnnotation &&
-          type.node.typeAnnotation.type === AST_NODE_TYPES.TSTupleType
-        ) {
-          return true;
-        }
+      if (
+        type.node.type === AST_NODE_TYPES.TSTypeOperator &&
+        ['keyof', 'readonly'].includes(type.node.operator) &&
+        type.node.typeAnnotation &&
+        type.node.typeAnnotation.type === AST_NODE_TYPES.TSTupleType
+      ) {
+        return true;
       }
       return false;
     };
@@ -220,7 +229,7 @@ export default util.createRule<Options, MessageIds>({
     const isValidGeneric = (type: TypeWithLabel): boolean => {
       return (
         type.node.type === AST_NODE_TYPES.TSTypeReference &&
-        type.node.typeParameters !== undefined
+        type.node.typeArguments != null
       );
     };
 
@@ -248,6 +257,8 @@ export default util.createRule<Options, MessageIds>({
       type: TypeWithLabel,
       isTopLevel = false,
     ): void {
+      // https://github.com/typescript-eslint/typescript-eslint/issues/5439
+      /* eslint-disable @typescript-eslint/no-non-null-assertion */
       if (type.node.type === AST_NODE_TYPES.TSFunctionType) {
         // callback
         if (allowCallbacks === 'never') {
@@ -300,6 +311,7 @@ export default util.createRule<Options, MessageIds>({
         // unhandled type - shouldn't happen
         reportError(type.node, type.compositionType, isTopLevel, 'Unhandled');
       }
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
     }
 
     /**
@@ -313,10 +325,7 @@ export default util.createRule<Options, MessageIds>({
         node.type === AST_NODE_TYPES.TSUnionType ||
         node.type === AST_NODE_TYPES.TSIntersectionType
       ) {
-        return node.types.reduce<TypeWithLabel[]>((acc, type) => {
-          acc.push(...getTypes(type, node.type));
-          return acc;
-        }, []);
+        return node.types.flatMap(type => getTypes(type, node.type));
       }
       return [{ node, compositionType }];
     }

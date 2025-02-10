@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/dot-notation -- ['implicit'] is private */
 import { DefinitionType } from '../../src/definition';
 import {
   expectToBeGlobalScope,
   getRealVariables,
   parseAndAnalyze,
-} from '../util';
+} from '../test-utils';
 
 describe('implicit global reference', () => {
   it('assignments global scope', () => {

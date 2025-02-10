@@ -1,20 +1,9 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import rule from '../../src/rules/no-useless-constructor';
-import { RuleTester } from '../RuleTester';
 
-const ruleTester = new RuleTester({
-  parserOptions: {
-    ecmaVersion: 6,
-    sourceType: 'module',
-  },
-  parser: '@typescript-eslint/parser',
-});
-
-const error = {
-  messageId: 'noUselessConstructor' as const,
-  type: AST_NODE_TYPES.MethodDefinition,
-};
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-useless-constructor', rule, {
   valid: [
@@ -140,11 +129,6 @@ abstract class A {
   constructor();
 }
     `,
-    `
-abstract class A {
-  abstract constructor();
-}
-    `,
     // https://github.com/typescript-eslint/typescript-eslint/issues/48
     `
 class A {
@@ -231,7 +215,22 @@ class A {
   constructor() {}
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -241,7 +240,22 @@ class A extends B {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -251,7 +265,22 @@ class A extends B {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -261,7 +290,22 @@ class A extends B {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -271,7 +315,22 @@ class A extends B {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -281,7 +340,22 @@ class A extends B.C {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B.C {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -291,7 +365,22 @@ class A extends B {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -301,7 +390,22 @@ class A extends B {
   }
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A extends B {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
     {
       code: `
@@ -309,7 +413,22 @@ class A {
   public constructor() {}
 }
       `,
-      errors: [error],
+      errors: [
+        {
+          messageId: 'noUselessConstructor',
+          suggestions: [
+            {
+              messageId: 'removeConstructor',
+              output: `
+class A {
+${'  '}
+}
+      `,
+            },
+          ],
+          type: AST_NODE_TYPES.MethodDefinition,
+        },
+      ],
     },
   ],
 });

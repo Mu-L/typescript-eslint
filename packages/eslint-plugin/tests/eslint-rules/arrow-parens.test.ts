@@ -1,22 +1,22 @@
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
+
 import { getESLintCoreRule } from '../../src/util/getESLintCoreRule';
-import { noFormat, RuleTester } from '../RuleTester';
 
 const rule = getESLintCoreRule('arrow-parens');
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+const ruleTester = new RuleTester();
 
 ruleTester.run('arrow-parens', rule, {
+  invalid: [],
   valid: [
     // https://github.com/typescript-eslint/typescript-eslint/issues/14
     noFormat`const foo = (t) => {};`,
-    'const foo = <T>(t) => {};',
-    'const foo = <T>(t: T) => {};',
+    'const foo = <T,>(t) => {};',
+    'const foo = <T,>(t: T) => {};',
     'const foo = <T>((t: T) => {});',
     'const foo = function <T>(t: T) {};',
     `
-const foo = <T>(bar: any): void => {
+const foo = <T,>(bar: any): void => {
   // Do nothing
 };
     `,
@@ -25,7 +25,7 @@ const foo = <T>(bar: any): void => {
       options: ['as-needed'],
     },
     {
-      code: 'const foo = <T>(t) => {};',
+      code: 'const foo = <T,>(t) => {};',
       options: ['as-needed'],
     },
     {
@@ -33,13 +33,12 @@ const foo = <T>(bar: any): void => {
       options: ['as-needed'],
     },
     {
-      code: 'const foo = <T>(t: T) => {};',
+      code: 'const foo = <T,>(t: T) => {};',
       options: ['as-needed'],
     },
     {
-      code: 'const foo = <T>(t: T) => ({});',
+      code: 'const foo = <T,>(t: T) => ({});',
       options: ['as-needed', { requireForBlockBody: true }],
     },
   ],
-  invalid: [],
 });

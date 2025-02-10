@@ -1,20 +1,21 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+
 import * as ts from 'typescript';
 
 import { escapeRegExp } from './escapeRegExp';
 
 // deeply re-export, for convenience
-export * from '@typescript-eslint/utils/dist/ast-utils';
+export * from '@typescript-eslint/utils/ast-utils';
 
 // The following is copied from `eslint`'s source code since it doesn't exist in eslint@5.
 // https://github.com/eslint/eslint/blob/145aec1ab9052fbca96a44d04927c595951b1536/lib/rules/utils/ast-utils.js#L1751-L1779
 // Could be export { getNameLocationInGlobalDirectiveComment } from 'eslint/lib/rules/utils/ast-utils'
 /**
  * Get the `loc` object of a given name in a `/*globals` directive comment.
- * @param {SourceCode} sourceCode The source code to convert index to loc.
- * @param {Comment} comment The `/*globals` directive comment which include the name.
- * @param {string} name The name to find.
- * @returns {SourceLocation} The `loc` object.
+ * @param sourceCode The source code to convert index to loc.
+ * @param comment The `/*globals` directive comment which include the name.
+ * @param name The name to find.
+ * @returns The `loc` object.
  */
 export function getNameLocationInGlobalDirectiveComment(
   sourceCode: TSESLint.SourceCode,
@@ -37,11 +38,11 @@ export function getNameLocationInGlobalDirectiveComment(
     comment.range[0] + '/*'.length + (match ? match.index + 1 : 0),
   );
   const end = {
-    line: start.line,
     column: start.column + (match ? name.length : 1),
+    line: start.line,
   };
 
-  return { start, end };
+  return { end, start };
 }
 
 // Copied from typescript https://github.com/microsoft/TypeScript/blob/42b0e3c4630c129ca39ce0df9fff5f0d1b4dd348/src/compiler/utilities.ts#L1335
@@ -56,7 +57,7 @@ export function forEachReturnStatement<T>(
   function traverse(node: ts.Node): T | undefined {
     switch (node.kind) {
       case ts.SyntaxKind.ReturnStatement:
-        return visitor(<ts.ReturnStatement>node);
+        return visitor(node as ts.ReturnStatement);
       case ts.SyntaxKind.CaseBlock:
       case ts.SyntaxKind.Block:
       case ts.SyntaxKind.IfStatement:

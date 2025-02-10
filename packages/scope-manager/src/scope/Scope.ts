@@ -17,11 +17,11 @@ import type { TSModuleScope } from './TSModuleScope';
 import type { TypeScope } from './TypeScope';
 import type { WithScope } from './WithScope';
 
-type Scope =
+export type Scope =
   | BlockScope
   | CatchScope
-  | ClassScope
   | ClassFieldInitializerScope
+  | ClassScope
   | ClassStaticBlockScope
   | ConditionalTypeScope
   | ForScope
@@ -36,5 +36,3 @@ type Scope =
   | TSModuleScope
   | TypeScope
   | WithScope;
-
-export { Scope };

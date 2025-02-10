@@ -3,15 +3,29 @@
 exports[`AST Fixtures declaration ExportNamedDeclaration enum TSESTree - AST 1`] = `
 Program {
   type: "Program",
-  body: Array [
+  body: [
     ExportNamedDeclaration {
       type: "ExportNamedDeclaration",
-      assertions: Array [],
+      attributes: [],
       declaration: TSEnumDeclaration {
         type: "TSEnumDeclaration",
+        body: TSEnumBody {
+          type: "TSEnumBody",
+          members: [],
+
+          range: [16, 18],
+          loc: {
+            start: { column: 16, line: 1 },
+            end: { column: 18, line: 1 },
+          },
+        },
+        const: false,
+        declare: false,
         id: Identifier {
           type: "Identifier",
+          decorators: [],
           name: "Foo",
+          optional: false,
 
           range: [12, 15],
           loc: {
@@ -19,7 +33,6 @@ Program {
             end: { column: 15, line: 1 },
           },
         },
-        members: Array [],
 
         range: [7, 18],
         loc: {
@@ -29,7 +42,7 @@ Program {
       },
       exportKind: "value",
       source: null,
-      specifiers: Array [],
+      specifiers: [],
 
       range: [0, 18],
       loc: {

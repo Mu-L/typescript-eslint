@@ -1,14 +1,16 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/no-redundant-type-constituents';
-import { getFixturesRootDir, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootDir = getFixturesRootDir();
 const ruleTester = new RuleTester({
-  parserOptions: {
-    ecmaVersion: 2021,
-    tsconfigRootDir: rootDir,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootDir,
+    },
   },
-  parser: '@typescript-eslint/parser',
 });
 
 ruleTester.run('no-redundant-type-constituents', rule, {
@@ -154,21 +156,16 @@ ruleTester.run('no-redundant-type-constituents', rule, {
       type B = string;
       type T = B & null;
     `,
-    {
-      code: 'type T = `${string}` & null;',
-      dependencyConstraints: {
-        typescript: '4.1',
-      },
-    },
-    {
-      code: `
-        type B = \`\${string}\`;
-        type T = B & null;
-      `,
-      dependencyConstraints: {
-        typescript: '4.1',
-      },
-    },
+    'type T = `${string}` & null;',
+    `
+      type B = \`\${string}\`;
+      type T = B & null;
+    `,
+    `
+      type T = 'a' | 1 | 'b';
+      type U = T & string;
+    `,
+    "declare function fn(): never | 'foo';",
   ],
 
   invalid: [
@@ -315,6 +312,19 @@ ruleTester.run('no-redundant-type-constituents', rule, {
       ],
     },
     {
+      code: 'type ErrorTypes = NotKnown | 0;',
+      errors: [
+        {
+          column: 19,
+          data: {
+            container: 'union',
+            typeName: 'NotKnown',
+          },
+          messageId: 'errorTypeOverrides',
+        },
+      ],
+    },
+    {
       code: 'type T = number | 0;',
       errors: [
         {
@@ -452,9 +462,6 @@ ruleTester.run('no-redundant-type-constituents', rule, {
     },
     {
       code: 'type T = `a${number}c` | string;',
-      dependencyConstraints: {
-        typescript: '4.1',
-      },
       errors: [
         {
           column: 10,
@@ -471,9 +478,6 @@ ruleTester.run('no-redundant-type-constituents', rule, {
         type B = \`a\${number}c\`;
         type T = B | string;
       `,
-      dependencyConstraints: {
-        typescript: '4.1',
-      },
       errors: [
         {
           column: 18,
@@ -487,9 +491,6 @@ ruleTester.run('no-redundant-type-constituents', rule, {
     },
     {
       code: 'type T = `${number}` | string;',
-      dependencyConstraints: {
-        typescript: '4.1',
-      },
       errors: [
         {
           column: 10,
@@ -667,6 +668,19 @@ ruleTester.run('no-redundant-type-constituents', rule, {
       ],
     },
     {
+      code: 'type ErrorTypes = NotKnown & 0;',
+      errors: [
+        {
+          column: 19,
+          data: {
+            container: 'intersection',
+            typeName: 'NotKnown',
+          },
+          messageId: 'errorTypeOverrides',
+        },
+      ],
+    },
+    {
       code: 'type T = number & never;',
       errors: [
         {
@@ -797,6 +811,47 @@ ruleTester.run('no-redundant-type-constituents', rule, {
           data: {
             literal: '-1n',
             primitive: 'bigint',
+          },
+          messageId: 'primitiveOverridden',
+        },
+      ],
+    },
+    {
+      code: `
+        type T = 'a' | 'b';
+        type U = T & string;
+      `,
+      errors: [
+        {
+          column: 18,
+          data: {
+            literal: '"a" | "b"',
+            primitive: 'string',
+          },
+          messageId: 'primitiveOverridden',
+        },
+      ],
+    },
+    {
+      code: `
+        type S = 1 | 2;
+        type T = 'a' | 'b';
+        type U = S & T & string & number;
+      `,
+      errors: [
+        {
+          column: 18,
+          data: {
+            literal: '1 | 2',
+            primitive: 'number',
+          },
+          messageId: 'primitiveOverridden',
+        },
+        {
+          column: 22,
+          data: {
+            literal: '"a" | "b"',
+            primitive: 'string',
           },
           messageId: 'primitiveOverridden',
         },

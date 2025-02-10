@@ -1,4 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 
@@ -9,13 +10,11 @@ type ClassLikeDeclaration =
   | TSESTree.ClassExpression;
 
 type FunctionLike =
-  | TSESTree.MethodDefinition['value']
-  | TSESTree.ArrowFunctionExpression;
+  | TSESTree.ArrowFunctionExpression
+  | TSESTree.MethodDefinition['value'];
 
 export default createRule({
   name: 'prefer-return-this-type',
-  defaultOptions: [],
-
   meta: {
     type: 'suggestion',
     docs: {
@@ -24,16 +23,18 @@ export default createRule({
       recommended: 'strict',
       requiresTypeChecking: true,
     },
+    fixable: 'code',
     messages: {
       useThisType: 'Use `this` type instead.',
     },
     schema: [],
-    fixable: 'code',
   },
 
+  defaultOptions: [],
+
   create(context) {
-    const parserServices = getParserServices(context);
-    const checker = parserServices.program.getTypeChecker();
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
 
     function tryGetNameInType(
       name: string,
@@ -60,11 +61,9 @@ export default createRule({
     }
 
     function isThisSpecifiedInParameters(originalFunc: FunctionLike): boolean {
-      const firstArg = originalFunc.params[0];
-      return (
-        firstArg &&
-        firstArg.type === AST_NODE_TYPES.Identifier &&
-        firstArg.name === 'this'
+      const firstArg = originalFunc.params.at(0);
+      return !!(
+        firstArg?.type === AST_NODE_TYPES.Identifier && firstArg.name === 'this'
       );
     }
 
@@ -76,14 +75,14 @@ export default createRule({
         return false;
       }
 
-      const func = parserServices.esTreeNodeToTSNodeMap.get(originalFunc);
+      const func = services.esTreeNodeToTSNodeMap.get(originalFunc);
 
       if (!func.body) {
         return false;
       }
 
-      const classType = checker.getTypeAtLocation(
-        parserServices.esTreeNodeToTSNodeMap.get(originalClass),
+      const classType = services.getTypeAtLocation(
+        originalClass,
       ) as ts.InterfaceType;
 
       if (func.body.kind !== ts.SyntaxKind.Block) {
@@ -92,7 +91,7 @@ export default createRule({
       }
 
       let hasReturnThis = false;
-      let hasReturnClassType = false;
+      let hasReturnClassType = false as boolean;
 
       forEachReturnStatement(func.body as ts.Block, stmt => {
         const expr = stmt.expression;
@@ -151,7 +150,7 @@ export default createRule({
 
     return {
       'ClassBody > MethodDefinition'(node: TSESTree.MethodDefinition): void {
-        checkFunction(node.value, node.parent!.parent as ClassLikeDeclaration);
+        checkFunction(node.value, node.parent.parent as ClassLikeDeclaration);
       },
       'ClassBody > PropertyDefinition'(
         node: TSESTree.PropertyDefinition,
@@ -165,7 +164,7 @@ export default createRule({
           return;
         }
 
-        checkFunction(node.value, node.parent!.parent as ClassLikeDeclaration);
+        checkFunction(node.value, node.parent.parent as ClassLikeDeclaration);
       },
     };
   },

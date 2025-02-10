@@ -1,18 +1,18 @@
-name: '📝 Documentation Request'
-description: 'Request a change in documentation'
+name: '📝 Documentation'
+description: 'Adding or improving in docs'
 title: 'Docs: <a short description of my proposal>'
 labels:
   - documentation
   - triage
 body:
   - type: checkboxes
-    id: sanity-checks
+    id: preliminary-checks
     attributes:
       label: Before You File a Documentation Request Please Confirm You Have Done The Following...
       options:
         - label: I have looked for existing [open or closed documentation requests](https://github.com/typescript-eslint/typescript-eslint/issues?q=is%3Aissue+label%3Adocumentation) that match my proposal.
           required: true
-        - label: I have [read the FAQ](https://typescript-eslint.io/docs/linting/troubleshooting) and my problem is not listed.
+        - label: I have [read the FAQ](https://typescript-eslint.io/linting/troubleshooting) and my problem is not listed.
           required: true
   - type: markdown
     attributes:
@@ -30,3 +30,7 @@ body:
       description: Which URL(s) on the website does this CRUD?
     validations:
       required: true
+  - type: textarea
+    attributes:
+      label: Additional Info
+      description: Any additional info you'd like to provide.

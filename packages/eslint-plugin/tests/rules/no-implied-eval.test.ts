@@ -1,15 +1,16 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/no-implied-eval';
-import { getFixturesRootDir, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootDir = getFixturesRootDir();
 const ruleTester = new RuleTester({
-  parserOptions: {
-    tsconfigRootDir: rootDir,
-    ecmaVersion: 2015,
-    sourceType: 'module',
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootDir,
+    },
   },
-  parser: '@typescript-eslint/parser',
 });
 
 ruleTester.run('no-implied-eval', rule, {
@@ -318,24 +319,24 @@ execScript('x = 1');
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 2,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 3,
           column: 13,
+          line: 3,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 4,
           column: 14,
+          line: 4,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 12,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -348,24 +349,24 @@ execScript(undefined);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 2,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 3,
           column: 13,
+          line: 3,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 4,
           column: 14,
+          line: 4,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 12,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -378,24 +379,24 @@ execScript(1 + '' + (() => {}));
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 2,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 3,
           column: 13,
+          line: 3,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 4,
           column: 14,
+          line: 4,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 12,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -410,24 +411,24 @@ execScript(foo);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 4,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 13,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 14,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 12,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -444,24 +445,24 @@ execScript(foo());
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 6,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 13,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 8,
           column: 14,
+          line: 8,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 9,
           column: 12,
+          line: 9,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -478,24 +479,24 @@ execScript(foo()());
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 6,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 13,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 8,
           column: 14,
+          line: 8,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 9,
           column: 12,
+          line: 9,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -510,24 +511,24 @@ execScript(fn + '');
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 4,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 13,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 14,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 12,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -542,24 +543,24 @@ execScript(foo);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 4,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 13,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 14,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 12,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -574,24 +575,24 @@ execScript(foo);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 4,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 13,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 14,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 12,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -606,24 +607,24 @@ execScript(foo as any);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 12,
           line: 4,
-          column: 12,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 13,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 14,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 7,
           column: 12,
+          line: 7,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -638,24 +639,24 @@ const fn = (foo: string | any) => {
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 14,
           line: 3,
-          column: 14,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 4,
           column: 15,
+          line: 4,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 16,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 14,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -668,9 +669,9 @@ setTimeout(Math.radom() > 0.5 ? foo : bar, 0);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 12,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -690,44 +691,44 @@ window['execScript'](\`\`);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 19,
           line: 2,
-          column: 19,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
+          column: 22,
           line: 3,
-          column: 22,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 20,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 23,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 8,
           column: 21,
+          line: 8,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 9,
           column: 24,
+          line: 9,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 11,
           column: 19,
+          line: 11,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 12,
           column: 22,
+          line: 12,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -747,44 +748,44 @@ global['execScript'](\`\`);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 19,
           line: 2,
-          column: 19,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
+          column: 22,
           line: 3,
-          column: 22,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 20,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 23,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 8,
           column: 21,
+          line: 8,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 9,
           column: 24,
+          line: 9,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 11,
           column: 19,
+          line: 11,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 12,
           column: 22,
+          line: 12,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -804,44 +805,44 @@ globalThis['execScript'](\`\`);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
+          column: 23,
           line: 2,
-          column: 23,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
+          column: 26,
           line: 3,
-          column: 26,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 24,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 6,
           column: 27,
+          line: 6,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 8,
           column: 25,
+          line: 8,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 9,
           column: 28,
+          line: 9,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 11,
           column: 23,
+          line: 11,
+          messageId: 'noImpliedEvalError',
         },
         {
-          messageId: 'noImpliedEvalError',
-          line: 12,
           column: 26,
+          line: 12,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -854,9 +855,9 @@ setTimeout(foo || bar, 500);
       `,
       errors: [
         {
-          messageId: 'noImpliedEvalError',
-          line: 5,
           column: 12,
+          line: 5,
+          messageId: 'noImpliedEvalError',
         },
       ],
     },
@@ -864,9 +865,9 @@ setTimeout(foo || bar, 500);
       code: 'const fn = Function();',
       errors: [
         {
-          messageId: 'noFunctionConstructor',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'noFunctionConstructor',
         },
       ],
     },
@@ -874,9 +875,9 @@ setTimeout(foo || bar, 500);
       code: "const fn = new Function('a', 'b', 'return a + b');",
       errors: [
         {
-          messageId: 'noFunctionConstructor',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'noFunctionConstructor',
         },
       ],
     },
@@ -884,9 +885,9 @@ setTimeout(foo || bar, 500);
       code: 'const fn = window.Function();',
       errors: [
         {
-          messageId: 'noFunctionConstructor',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'noFunctionConstructor',
         },
       ],
     },
@@ -894,9 +895,9 @@ setTimeout(foo || bar, 500);
       code: 'const fn = new window.Function();',
       errors: [
         {
-          messageId: 'noFunctionConstructor',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'noFunctionConstructor',
         },
       ],
     },
@@ -904,9 +905,9 @@ setTimeout(foo || bar, 500);
       code: "const fn = window['Function']();",
       errors: [
         {
-          messageId: 'noFunctionConstructor',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'noFunctionConstructor',
         },
       ],
     },
@@ -914,9 +915,9 @@ setTimeout(foo || bar, 500);
       code: "const fn = new window['Function']();",
       errors: [
         {
-          messageId: 'noFunctionConstructor',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'noFunctionConstructor',
         },
       ],
     },

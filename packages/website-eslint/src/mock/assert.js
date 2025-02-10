@@ -51,7 +51,7 @@ class AssertionError extends Error {
           typeof stackStartFunction === 'function'
             ? stackStartFunction.name
             : stackStartFunction.toString();
-        const idx = out.indexOf('\n' + fn_name);
+        const idx = out.indexOf(`\n${fn_name}`);
         if (idx >= 0) {
           // once we have located the function frame
           // we need to strip out everything before it (and its line)
@@ -67,11 +67,11 @@ class AssertionError extends Error {
 
 function fail(actual, expected, message, operator, stackStartFunction) {
   throw new AssertionError({
-    message: message,
-    actual: actual,
-    expected: expected,
-    operator: operator,
-    stackStartFunction: stackStartFunction,
+    actual,
+    expected,
+    message,
+    operator,
+    stackStartFunction,
   });
 }
 
@@ -81,6 +81,7 @@ function assert(value, message) {
   }
 }
 assert.equal = function equal(actual, expected, message) {
+  // eslint-disable-next-line eqeqeq -- intentional inexact equality
   if (actual != expected) {
     fail(actual, expected, message, '==', equal);
   }
@@ -96,6 +97,7 @@ assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
   }
 };
 assert.notEqual = function notEqual(actual, expected, message) {
+  // eslint-disable-next-line eqeqeq -- intentional inexact equality
   if (actual == expected) {
     fail(actual, expected, message, '!=', notEqual);
   }

@@ -1,9 +1,8 @@
-import rule from '../../src/rules/no-non-null-asserted-optional-chain';
-import { noFormat, RuleTester } from '../RuleTester';
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/no-non-null-asserted-optional-chain';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-non-null-asserted-optional-chain', rule, {
   valid: [
@@ -17,7 +16,6 @@ ruleTester.run('no-non-null-asserted-optional-chain', rule, {
     'foo?.bar();',
     '(foo?.bar).baz!;',
     '(foo?.bar()).baz!;',
-    // Valid as of 3.9
     'foo?.bar!.baz;',
     'foo?.bar!();',
     "foo?.['bar']!.baz;",

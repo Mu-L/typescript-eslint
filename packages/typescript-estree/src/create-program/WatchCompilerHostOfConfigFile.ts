@@ -8,9 +8,9 @@ import type * as ts from 'typescript';
 interface DirectoryStructureHost {
   readDirectory?(
     path: string,
-    extensions?: ReadonlyArray<string>,
-    exclude?: ReadonlyArray<string>,
-    include?: ReadonlyArray<string>,
+    extensions?: readonly string[],
+    exclude?: readonly string[],
+    include?: readonly string[],
     depth?: number,
   ): string[];
 }
@@ -19,20 +19,18 @@ interface DirectoryStructureHost {
 interface CachedDirectoryStructureHost extends DirectoryStructureHost {
   readDirectory(
     path: string,
-    extensions?: ReadonlyArray<string>,
-    exclude?: ReadonlyArray<string>,
-    include?: ReadonlyArray<string>,
+    extensions?: readonly string[],
+    exclude?: readonly string[],
+    include?: readonly string[],
     depth?: number,
   ): string[];
 }
 
 // https://github.com/microsoft/TypeScript/blob/5d36aab06f12b0a3ba6197eb14e98204ec0195fb/src/compiler/watch.ts#L548-L554
-interface WatchCompilerHostOfConfigFile<T extends ts.BuilderProgram>
+export interface WatchCompilerHostOfConfigFile<T extends ts.BuilderProgram>
   extends ts.WatchCompilerHostOfConfigFile<T> {
+  extraFileExtensions?: readonly ts.FileExtensionInfo[];
   onCachedDirectoryStructureHostCreate(
     host: CachedDirectoryStructureHost,
   ): void;
-  extraFileExtensions?: readonly ts.FileExtensionInfo[];
 }
-
-export { WatchCompilerHostOfConfigFile };

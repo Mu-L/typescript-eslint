@@ -4,6 +4,7 @@ import type {
   Program,
   SourceFile,
 } from 'typescript';
+
 import { flattenDiagnosticMessageText, sys } from 'typescript';
 
 export interface SemanticOrSyntacticError extends Diagnostic {
@@ -22,18 +23,18 @@ export function getFirstSemanticOrSyntacticError(
   ast: SourceFile,
 ): SemanticOrSyntacticError | undefined {
   try {
-    const supportedSyntacticDiagnostics = whitelistSupportedDiagnostics(
+    const supportedSyntacticDiagnostics = allowlistSupportedDiagnostics(
       program.getSyntacticDiagnostics(ast),
     );
-    if (supportedSyntacticDiagnostics.length) {
+    if (supportedSyntacticDiagnostics.length > 0) {
       return convertDiagnosticToSemanticOrSyntacticError(
         supportedSyntacticDiagnostics[0],
       );
     }
-    const supportedSemanticDiagnostics = whitelistSupportedDiagnostics(
+    const supportedSemanticDiagnostics = allowlistSupportedDiagnostics(
       program.getSemanticDiagnostics(ast),
     );
-    if (supportedSemanticDiagnostics.length) {
+    if (supportedSemanticDiagnostics.length > 0) {
       return convertDiagnosticToSemanticOrSyntacticError(
         supportedSemanticDiagnostics[0],
       );
@@ -48,7 +49,7 @@ export function getFirstSemanticOrSyntacticError(
      * "Debug Failure. Shouldn't ever directly check a JsxOpeningElement"
      *
      * For our current use-cases this is undesired behavior, so we just suppress it
-     * and log a a warning.
+     * and log a warning.
      */
     /* istanbul ignore next */
     console.warn(`Warning From TSC: "${(e as Error).message}`); // eslint-disable-line no-console
@@ -57,9 +58,9 @@ export function getFirstSemanticOrSyntacticError(
   }
 }
 
-function whitelistSupportedDiagnostics(
-  diagnostics: readonly (DiagnosticWithLocation | Diagnostic)[],
-): readonly (DiagnosticWithLocation | Diagnostic)[] {
+function allowlistSupportedDiagnostics(
+  diagnostics: readonly (Diagnostic | DiagnosticWithLocation)[],
+): readonly (Diagnostic | DiagnosticWithLocation)[] {
   return diagnostics.filter(diagnostic => {
     switch (diagnostic.code) {
       case 1013: // "A rest parameter or binding pattern may not have a trailing comma."

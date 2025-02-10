@@ -3,13 +3,13 @@ export function debounce<X extends unknown[]>(
   wait: number,
 ): (...args: X) => void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let timeout: any | undefined;
+  let timeout: any;
   return function (...args: X): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       timeout = undefined;
-      func.call(null, ...args);
+      func(...args);
     }, wait);
   };
 }
