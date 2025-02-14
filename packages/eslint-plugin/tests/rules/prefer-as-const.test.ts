@@ -1,9 +1,8 @@
-import rule from '../../src/rules/prefer-as-const';
-import { RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/prefer-as-const';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('prefer-as-const', rule, {
   valid: [
@@ -92,45 +91,50 @@ ruleTester.run('prefer-as-const', rule, {
   invalid: [
     {
       code: "let foo = { bar: 'baz' as 'baz' };",
-      output: "let foo = { bar: 'baz' as const };",
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 27,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: "let foo = { bar: 'baz' as const };",
     },
     {
       code: 'let foo = { bar: 1 as 1 };',
-      output: 'let foo = { bar: 1 as const };',
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 23,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: 'let foo = { bar: 1 as const };',
     },
     {
       code: "let []: 'bar' = 'bar';",
-      output: null,
       errors: [
         {
-          messageId: 'variableConstAssertion',
-          line: 1,
           column: 9,
+          line: 1,
+          messageId: 'variableConstAssertion',
+          suggestions: [
+            {
+              messageId: 'variableSuggest',
+              output: "let [] = 'bar' as const;",
+            },
+          ],
         },
       ],
+      output: null,
     },
     {
       code: "let foo: 'bar' = 'bar';",
-      output: null,
       errors: [
         {
-          messageId: 'variableConstAssertion',
-          line: 1,
           column: 10,
+          line: 1,
+          messageId: 'variableConstAssertion',
           suggestions: [
             {
               messageId: 'variableSuggest',
@@ -139,15 +143,15 @@ ruleTester.run('prefer-as-const', rule, {
           ],
         },
       ],
+      output: null,
     },
     {
       code: 'let foo: 2 = 2;',
-      output: null,
       errors: [
         {
-          messageId: 'variableConstAssertion',
-          line: 1,
           column: 10,
+          line: 1,
+          messageId: 'variableConstAssertion',
           suggestions: [
             {
               messageId: 'variableSuggest',
@@ -156,61 +160,62 @@ ruleTester.run('prefer-as-const', rule, {
           ],
         },
       ],
+      output: null,
     },
     {
       code: "let foo: 'bar' = 'bar' as 'bar';",
-      output: "let foo: 'bar' = 'bar' as const;",
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 27,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: "let foo: 'bar' = 'bar' as const;",
     },
     {
       code: "let foo = <'bar'>'bar';",
-      output: "let foo = <const>'bar';",
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: "let foo = <const>'bar';",
     },
     {
       code: 'let foo = <4>4;',
-      output: 'let foo = <const>4;',
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 12,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: 'let foo = <const>4;',
     },
     {
       code: "let foo = 'bar' as 'bar';",
-      output: "let foo = 'bar' as const;",
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 20,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: "let foo = 'bar' as const;",
     },
     {
       code: 'let foo = 5 as 5;',
-      output: 'let foo = 5 as const;',
       errors: [
         {
-          messageId: 'preferConstAssertion',
-          line: 1,
           column: 16,
+          line: 1,
+          messageId: 'preferConstAssertion',
         },
       ],
+      output: 'let foo = 5 as const;',
     },
     {
       code: `
@@ -218,12 +223,11 @@ class foo {
   bar: 'baz' = 'baz';
 }
       `,
-      output: null,
       errors: [
         {
-          messageId: 'variableConstAssertion',
-          line: 3,
           column: 8,
+          line: 3,
+          messageId: 'variableConstAssertion',
           suggestions: [
             {
               messageId: 'variableSuggest',
@@ -236,6 +240,7 @@ class foo {
           ],
         },
       ],
+      output: null,
     },
     {
       code: `
@@ -243,12 +248,11 @@ class foo {
   bar: 2 = 2;
 }
       `,
-      output: null,
       errors: [
         {
-          messageId: 'variableConstAssertion',
-          line: 3,
           column: 8,
+          line: 3,
+          messageId: 'variableConstAssertion',
           suggestions: [
             {
               messageId: 'variableSuggest',
@@ -261,6 +265,7 @@ class foo {
           ],
         },
       ],
+      output: null,
     },
     {
       code: `
@@ -268,18 +273,18 @@ class foo {
   foo = <'bar'>'bar';
 }
       `,
+      errors: [
+        {
+          column: 10,
+          line: 3,
+          messageId: 'preferConstAssertion',
+        },
+      ],
       output: `
 class foo {
   foo = <const>'bar';
 }
       `,
-      errors: [
-        {
-          messageId: 'preferConstAssertion',
-          line: 3,
-          column: 10,
-        },
-      ],
     },
     {
       code: `
@@ -287,18 +292,18 @@ class foo {
   foo = 'bar' as 'bar';
 }
       `,
+      errors: [
+        {
+          column: 18,
+          line: 3,
+          messageId: 'preferConstAssertion',
+        },
+      ],
       output: `
 class foo {
   foo = 'bar' as const;
 }
       `,
-      errors: [
-        {
-          messageId: 'preferConstAssertion',
-          line: 3,
-          column: 18,
-        },
-      ],
     },
     {
       code: `
@@ -306,18 +311,18 @@ class foo {
   foo = 5 as 5;
 }
       `,
+      errors: [
+        {
+          column: 14,
+          line: 3,
+          messageId: 'preferConstAssertion',
+        },
+      ],
       output: `
 class foo {
   foo = 5 as const;
 }
       `,
-      errors: [
-        {
-          messageId: 'preferConstAssertion',
-          line: 3,
-          column: 14,
-        },
-      ],
     },
   ],
 });

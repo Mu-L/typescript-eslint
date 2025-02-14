@@ -1,11 +1,14 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import * as tsutils from 'tsutils';
+
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import type {
   InferMessageIdsTypeFromRule,
   InferOptionsTypeFromRule,
 } from '../util';
+
 import { createRule, getModifiers, getParserServices } from '../util';
 import { getESLintCoreRule } from '../util/getESLintCoreRule';
 
@@ -14,63 +17,72 @@ const baseRule = getESLintCoreRule('dot-notation');
 export type Options = InferOptionsTypeFromRule<typeof baseRule>;
 export type MessageIds = InferMessageIdsTypeFromRule<typeof baseRule>;
 
+const defaultOptions: Options = [
+  {
+    allowIndexSignaturePropertyAccess: false,
+    allowKeywords: true,
+    allowPattern: '',
+    allowPrivateClassPropertyAccess: false,
+    allowProtectedClassPropertyAccess: false,
+  },
+];
+
 export default createRule<Options, MessageIds>({
   name: 'dot-notation',
   meta: {
     type: 'suggestion',
+    defaultOptions,
     docs: {
       description: 'Enforce dot notation whenever possible',
-      recommended: 'strict',
       extendsBaseRule: true,
+      recommended: 'stylistic',
       requiresTypeChecking: true,
     },
+    fixable: baseRule.meta.fixable,
+    hasSuggestions: baseRule.meta.hasSuggestions,
+    messages: baseRule.meta.messages,
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
+          allowIndexSignaturePropertyAccess: {
+            type: 'boolean',
+            default: false,
+            description:
+              'Whether to allow accessing properties matching an index signature with array notation.',
+          },
           allowKeywords: {
             type: 'boolean',
             default: true,
+            description: 'Whether to allow keywords such as ["class"]`.',
           },
           allowPattern: {
             type: 'string',
             default: '',
+            description: 'Regular expression of names to allow.',
           },
           allowPrivateClassPropertyAccess: {
             type: 'boolean',
             default: false,
+            description:
+              'Whether to allow accessing class members marked as `private` with array notation.',
           },
           allowProtectedClassPropertyAccess: {
             type: 'boolean',
             default: false,
-          },
-          allowIndexSignaturePropertyAccess: {
-            type: 'boolean',
-            default: false,
+            description:
+              'Whether to allow accessing class members marked as `protected` with array notation.',
           },
         },
-        additionalProperties: false,
       },
     ],
-    fixable: baseRule.meta.fixable,
-    hasSuggestions: baseRule.meta.hasSuggestions,
-    messages: baseRule.meta.messages,
   },
-  defaultOptions: [
-    {
-      allowPrivateClassPropertyAccess: false,
-      allowProtectedClassPropertyAccess: false,
-      allowIndexSignaturePropertyAccess: false,
-      allowKeywords: true,
-      allowPattern: '',
-    },
-  ],
+  defaultOptions,
   create(context, [options]) {
     const rules = baseRule.create(context);
-
-    const { program, esTreeNodeToTSNodeMap } = getParserServices(context);
-    const typeChecker = program.getTypeChecker();
-
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
     const allowPrivateClassPropertyAccess =
       options.allowPrivateClassPropertyAccess;
     const allowProtectedClassPropertyAccess =
@@ -78,8 +90,7 @@ export default createRule<Options, MessageIds>({
     const allowIndexSignaturePropertyAccess =
       (options.allowIndexSignaturePropertyAccess ?? false) ||
       tsutils.isCompilerOptionEnabled(
-        program.getCompilerOptions(),
-        // @ts-expect-error - TS is refining the type to never for some reason
+        services.program.getCompilerOptions(),
         'noPropertyAccessFromIndexSignature',
       );
 
@@ -92,9 +103,17 @@ export default createRule<Options, MessageIds>({
           node.computed
         ) {
           // for perf reasons - only fetch symbols if we have to
-          const propertySymbol = typeChecker.getSymbolAtLocation(
-            esTreeNodeToTSNodeMap.get(node.property),
-          );
+          const propertySymbol =
+            services.getSymbolAtLocation(node.property) ??
+            services
+              .getTypeAtLocation(node.object)
+              .getNonNullableType()
+              .getProperties()
+              .find(
+                propertySymbol =>
+                  node.property.type === AST_NODE_TYPES.Literal &&
+                  propertySymbol.escapedName === node.property.value,
+              );
           const modifierKind = getModifiers(
             propertySymbol?.getDeclarations()?.[0],
           )?.[0].kind;
@@ -106,17 +125,16 @@ export default createRule<Options, MessageIds>({
           ) {
             return;
           }
-          if (
-            propertySymbol === undefined &&
-            allowIndexSignaturePropertyAccess
-          ) {
-            const objectType = typeChecker.getTypeAtLocation(
-              esTreeNodeToTSNodeMap.get(node.object),
-            );
-            const indexType = objectType
-              .getNonNullableType()
-              .getStringIndexType();
-            if (indexType !== undefined) {
+          if (propertySymbol == null && allowIndexSignaturePropertyAccess) {
+            const objectType = services
+              .getTypeAtLocation(node.object)
+              .getNonNullableType();
+            const indexInfos = checker.getIndexInfosOfType(objectType);
+            if (
+              indexInfos.some(
+                info => info.keyType.flags & ts.TypeFlags.StringLike,
+              )
+            ) {
               return;
             }
           }

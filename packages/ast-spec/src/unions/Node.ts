@@ -12,11 +12,13 @@ import type { TSModuleDeclaration } from '../declaration/TSModuleDeclaration/spe
 import type { TSNamespaceExportDeclaration } from '../declaration/TSNamespaceExportDeclaration/spec';
 import type { TSTypeAliasDeclaration } from '../declaration/TSTypeAliasDeclaration/spec';
 import type { VariableDeclaration } from '../declaration/VariableDeclaration/spec';
+import type { AccessorProperty } from '../element/AccessorProperty/spec';
 import type { MethodDefinition } from '../element/MethodDefinition/spec';
 import type { Property } from '../element/Property/spec';
 import type { PropertyDefinition } from '../element/PropertyDefinition/spec';
 import type { SpreadElement } from '../element/SpreadElement/spec';
 import type { StaticBlock } from '../element/StaticBlock/spec';
+import type { TSAbstractAccessorProperty } from '../element/TSAbstractAccessorProperty/spec';
 import type { TSAbstractMethodDefinition } from '../element/TSAbstractMethodDefinition/spec';
 import type { TSAbstractPropertyDefinition } from '../element/TSAbstractPropertyDefinition/spec';
 import type { TSCallSignatureDeclaration } from '../element/TSCallSignatureDeclaration/spec';
@@ -90,6 +92,7 @@ import type { Program } from '../special/Program/spec';
 import type { SwitchCase } from '../special/SwitchCase/spec';
 import type { TemplateElement } from '../special/TemplateElement/spec';
 import type { TSClassImplements } from '../special/TSClassImplements/spec';
+import type { TSEnumBody } from '../special/TSEnumBody/spec';
 import type { TSExternalModuleReference } from '../special/TSExternalModuleReference/spec';
 import type { TSInterfaceBody } from '../special/TSInterfaceBody/spec';
 import type { TSInterfaceHeritage } from '../special/TSInterfaceHeritage/spec';
@@ -170,6 +173,7 @@ import type { Literal } from './Literal';
  */
 
 export type Node =
+  | AccessorProperty
   | ArrayExpression
   | ArrayPattern
   | ArrowFunctionExpression
@@ -251,6 +255,7 @@ export type Node =
   | ThisExpression
   | ThrowStatement
   | TryStatement
+  | TSAbstractAccessorProperty
   | TSAbstractKeyword
   | TSAbstractMethodDefinition
   | TSAbstractPropertyDefinition
@@ -268,6 +273,7 @@ export type Node =
   | TSDeclareFunction
   | TSDeclareKeyword
   | TSEmptyBodyFunctionExpression
+  | TSEnumBody
   | TSEnumDeclaration
   | TSEnumMember
   | TSExportAssignment

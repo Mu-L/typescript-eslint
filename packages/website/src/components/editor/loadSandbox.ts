@@ -1,40 +1,15 @@
-import type { LintUtils } from '@typescript-eslint/website-eslint';
-import type MonacoType from 'monaco-editor';
-import type * as TSType from 'typescript';
+import type MonacoEditor from 'monaco-editor';
 
 import type * as SandboxFactory from '../../vendor/sandbox';
-import type * as TsWorker from '../../vendor/tsWorker';
+import type { WebLinterModule } from '../linter/types';
 
-type Monaco = typeof MonacoType;
-type TS = typeof TSType;
-
-declare global {
-  type WindowRequireCb = (
-    main: Monaco,
-    tsWorker: typeof TsWorker,
-    sandboxFactory: typeof SandboxFactory,
-    lintUtils: LintUtils,
-  ) => void;
-  interface WindowRequire {
-    (files: string[], cb: WindowRequireCb): void;
-    config: (arg: {
-      paths?: Record<string, string>;
-      ignoreDuplicateModules?: string[];
-    }) => void;
-  }
-
-  interface Window {
-    ts: TS;
-    require: WindowRequire;
-  }
-}
+type Monaco = typeof MonacoEditor;
+type Sandbox = typeof SandboxFactory;
 
 export interface SandboxModel {
+  lintUtils: WebLinterModule;
   main: Monaco;
-  tsWorker: typeof TsWorker;
-  sandboxFactory: typeof SandboxFactory;
-  ts: TS;
-  lintUtils: LintUtils;
+  sandboxFactory: Sandbox;
 }
 
 function loadSandbox(tsVersion: string): Promise<SandboxModel> {
@@ -48,39 +23,24 @@ function loadSandbox(tsVersion: string): Promise<SandboxModel> {
       // https://typescript.azureedge.net/indexes/releases.json
       window.require.config({
         paths: {
-          vs: `https://typescript.azureedge.net/cdn/${tsVersion}/monaco/min/vs`,
-          sandbox: 'https://www.typescriptlang.org/js/sandbox',
           linter: '/sandbox',
+          sandbox: 'https://www.typescriptlang.org/js/sandbox',
+          vs: `https://playgroundcdn.typescriptlang.org/cdn/${tsVersion}/monaco/min/vs`,
         },
         // This is something you need for monaco to work
         ignoreDuplicateModules: ['vs/editor/editor.main'],
       });
 
       // Grab a copy of monaco, TypeScript and the sandbox
-      window.require(
-        [
-          'vs/editor/editor.main',
-          'vs/language/typescript/tsWorker',
-          'sandbox/index',
-          'linter/index',
-        ],
-        (main, tsWorker, sandboxFactory, lintUtils) => {
-          const isOK = main && window.ts && sandboxFactory;
-          if (isOK) {
-            resolve({
-              main,
-              tsWorker,
-              sandboxFactory,
-              ts: window.ts,
-              lintUtils,
-            });
-          } else {
-            reject(
-              new Error(
-                'Could not get all the dependencies of sandbox set up!',
-              ),
-            );
-          }
+      window.require<[Monaco, Sandbox, WebLinterModule]>(
+        ['vs/editor/editor.main', 'sandbox/index', 'linter/index'],
+        (main, sandboxFactory, lintUtils) => {
+          resolve({ lintUtils, main, sandboxFactory });
+        },
+        () => {
+          reject(
+            new Error('Could not get all the dependencies of sandbox set up!'),
+          );
         },
       );
     };

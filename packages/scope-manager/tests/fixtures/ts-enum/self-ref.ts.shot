@@ -2,78 +2,66 @@
 
 exports[`ts-enum self-ref 1`] = `
 ScopeManager {
-  variables: Array [
+  variables: [
     ImplicitGlobalConstTypeVariable,
     Variable$2 {
-      defs: Array [
+      defs: [
         TSEnumNameDefinition$1 {
           name: Identifier<"Foo">,
           node: TSEnumDeclaration$1,
         },
       ],
       name: "Foo",
-      references: Array [],
-      isValueVariable: true,
-      isTypeVariable: true,
-    },
-    Variable$3 {
-      defs: Array [
-        TSEnumNameDefinition$2 {
-          name: Identifier<"Foo">,
-          node: TSEnumDeclaration$1,
-        },
-      ],
-      name: "Foo",
-      references: Array [
+      references: [
         Reference$1 {
           identifier: Identifier<"Foo">,
           isRead: true,
           isTypeReference: false,
           isValueReference: true,
           isWrite: false,
-          resolved: Variable$3,
+          resolved: Variable$2,
         },
       ],
       isValueVariable: true,
       isTypeVariable: true,
     },
-    Variable$4 {
-      defs: Array [
-        TSEnumMemberDefinition$3 {
+    Variable$3 {
+      defs: [
+        TSEnumMemberDefinition$2 {
           name: Identifier<"a">,
           node: TSEnumMember$2,
         },
       ],
       name: "a",
-      references: Array [],
+      references: [],
       isValueVariable: true,
       isTypeVariable: true,
     },
-    Variable$5 {
-      defs: Array [
-        TSEnumMemberDefinition$4 {
+    Variable$4 {
+      defs: [
+        TSEnumMemberDefinition$3 {
           name: Identifier<"b">,
           node: TSEnumMember$3,
         },
       ],
       name: "b",
-      references: Array [],
+      references: [],
       isValueVariable: true,
       isTypeVariable: true,
     },
   ],
-  scopes: Array [
+  scopes: [
     GlobalScope$1 {
       block: Program$4,
       isStrict: false,
-      references: Array [],
+      references: [],
       set: Map {
         "const" => ImplicitGlobalConstTypeVariable,
         "Foo" => Variable$2,
       },
       type: "global",
       upper: null,
-      variables: Array [
+      variables: [
         ImplicitGlobalConstTypeVariable,
         Variable$2,
       ],
@@ -81,20 +69,18 @@ ScopeManager {
     TSEnumScope$2 {
       block: TSEnumDeclaration$1,
       isStrict: true,
-      references: Array [
+      references: [
         Reference$1,
       ],
       set: Map {
-        "Foo" => Variable$3,
-        "a" => Variable$4,
-        "b" => Variable$5,
+        "a" => Variable$3,
+        "b" => Variable$4,
       },
       type: "tsEnum",
       upper: GlobalScope$1,
-      variables: Array [
+      variables: [
         Variable$3,
         Variable$4,
-        Variable$5,
       ],
     },
   ],

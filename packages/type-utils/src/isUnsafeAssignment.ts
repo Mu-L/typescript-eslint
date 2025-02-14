@@ -1,7 +1,8 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import { isTypeReference } from 'tsutils';
 import type * as ts from 'typescript';
+
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
 
 import { isTypeAnyType, isTypeUnknownType } from './predicates';
 
@@ -20,7 +21,23 @@ export function isUnsafeAssignment(
   receiver: ts.Type,
   checker: ts.TypeChecker,
   senderNode: TSESTree.Node | null,
-): false | { sender: ts.Type; receiver: ts.Type } {
+): { receiver: ts.Type; sender: ts.Type } | false {
+  return isUnsafeAssignmentWorker(
+    type,
+    receiver,
+    checker,
+    senderNode,
+    new Map(),
+  );
+}
+
+function isUnsafeAssignmentWorker(
+  type: ts.Type,
+  receiver: ts.Type,
+  checker: ts.TypeChecker,
+  senderNode: TSESTree.Node | null,
+  visited: Map<ts.Type, Set<ts.Type>>,
+): { receiver: ts.Type; sender: ts.Type } | false {
   if (isTypeAnyType(type)) {
     // Allow assignment of any ==> unknown.
     if (isTypeUnknownType(receiver)) {
@@ -28,11 +45,22 @@ export function isUnsafeAssignment(
     }
 
     if (!isTypeAnyType(receiver)) {
-      return { sender: type, receiver };
+      return { receiver, sender: type };
     }
   }
 
-  if (isTypeReference(type) && isTypeReference(receiver)) {
+  const typeAlreadyVisited = visited.get(type);
+
+  if (typeAlreadyVisited) {
+    if (typeAlreadyVisited.has(receiver)) {
+      return false;
+    }
+    typeAlreadyVisited.add(receiver);
+  } else {
+    visited.set(type, new Set([receiver]));
+  }
+
+  if (tsutils.isTypeReference(type) && tsutils.isTypeReference(receiver)) {
     // TODO - figure out how to handle cases like this,
     // where the types are assignable, but not the same type
     /*
@@ -57,7 +85,7 @@ export function isUnsafeAssignment(
       senderNode.callee.type === AST_NODE_TYPES.Identifier &&
       senderNode.callee.name === 'Map' &&
       senderNode.arguments.length === 0 &&
-      senderNode.typeParameters == null
+      senderNode.typeArguments == null
     ) {
       // special case to handle `new Map()`
       // unfortunately Map's default empty constructor is typed to return `Map<any, any>` :(
@@ -72,9 +100,15 @@ export function isUnsafeAssignment(
       const arg = typeArguments[i];
       const receiverArg = receiverTypeArguments[i];
 
-      const unsafe = isUnsafeAssignment(arg, receiverArg, checker, senderNode);
+      const unsafe = isUnsafeAssignmentWorker(
+        arg,
+        receiverArg,
+        checker,
+        senderNode,
+        visited,
+      );
       if (unsafe) {
-        return { sender: type, receiver };
+        return { receiver, sender: type };
       }
     }
 

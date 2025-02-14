@@ -1,7 +1,9 @@
 import type { AST_NODE_TYPES, TSESTree } from '@typescript-eslint/types';
-import { VisitorKeys, visitorKeys } from '@typescript-eslint/visitor-keys';
+import type { VisitorKeys } from '@typescript-eslint/visitor-keys';
 
-interface VisitorOptions {
+import { visitorKeys } from '@typescript-eslint/visitor-keys';
+
+export interface VisitorOptions {
   childVisitorKeys?: VisitorKeys | null;
   visitChildrenEvenIfSelectorExists?: boolean;
 }
@@ -13,11 +15,11 @@ function isNode(node: unknown): node is TSESTree.Node {
   return isObject(node) && typeof node.type === 'string';
 }
 
-type NodeVisitor = {
-  [K in AST_NODE_TYPES]?: (node: TSESTree.Node) => void;
-};
+type NodeVisitor = Partial<
+  Record<AST_NODE_TYPES, (node: TSESTree.Node) => void>
+>;
 
-abstract class VisitorBase {
+export abstract class VisitorBase {
   readonly #childVisitorKeys: VisitorKeys;
   readonly #visitChildrenEvenIfSelectorExists: boolean;
   constructor(options: VisitorOptions) {
@@ -29,17 +31,17 @@ abstract class VisitorBase {
   /**
    * Default method for visiting children.
    * @param node the node whose children should be visited
-   * @param exclude a list of keys to not visit
+   * @param excludeArr a list of keys to not visit
    */
   visitChildren<T extends TSESTree.Node>(
     node: T | null | undefined,
     excludeArr: (keyof T)[] = [],
   ): void {
-    if (node == null || node.type == null) {
+    if (node?.type == null) {
       return;
     }
 
-    const exclude = new Set(excludeArr.concat(['parent'])) as Set<string>;
+    const exclude = new Set([...excludeArr, 'parent'] as string[]);
     const children = this.#childVisitorKeys[node.type] ?? Object.keys(node);
     for (const key of children) {
       if (exclude.has(key)) {
@@ -67,7 +69,7 @@ abstract class VisitorBase {
    * Dispatching node.
    */
   visit(node: TSESTree.Node | null | undefined): void {
-    if (node == null || node.type == null) {
+    if (node?.type == null) {
       return;
     }
 
@@ -83,4 +85,4 @@ abstract class VisitorBase {
   }
 }
 
-export { VisitorBase, VisitorOptions, VisitorKeys };
+export type { VisitorKeys } from '@typescript-eslint/visitor-keys';

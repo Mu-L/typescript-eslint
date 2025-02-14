@@ -1,75 +1,31 @@
-import Dropdown from '@site/src/components/inputs/Dropdown';
-import Modal from '@site/src/components/modals/Modal';
 import clsx from 'clsx';
-import React, { useCallback, useEffect, useReducer, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
-import useFocus from '../hooks/useFocus';
 import Checkbox from '../inputs/Checkbox';
+import Dropdown from '../inputs/Dropdown';
 import Text from '../inputs/Text';
 import styles from './ConfigEditor.module.css';
 
 export interface ConfigOptionsField {
-  key: string;
-  type: 'boolean' | 'string';
-  label?: string;
   defaults?: unknown[];
   enum?: string[];
+  key: string;
+  label?: string;
+  type: 'boolean' | 'string';
 }
 
 export interface ConfigOptionsType {
-  heading: string;
   fields: ConfigOptionsField[];
+  heading: string;
 }
 
 export type ConfigEditorValues = Record<string, unknown>;
 
 export interface ConfigEditorProps {
+  readonly className?: string;
+  readonly onChange: (config: ConfigEditorValues) => void;
   readonly options: ConfigOptionsType[];
   readonly values: ConfigEditorValues;
-  readonly isOpen: boolean;
-  readonly header: string;
-  readonly onClose: (config: ConfigEditorValues) => void;
-}
-
-function reducerObject(
-  state: ConfigEditorValues,
-  action:
-    | { type: 'init'; config?: ConfigEditorValues }
-    | {
-        type: 'set';
-        name: string;
-        value: unknown;
-      }
-    | {
-        type: 'toggle';
-        checked: boolean;
-        default: unknown[] | undefined;
-        name: string;
-      },
-): ConfigEditorValues {
-  switch (action.type) {
-    case 'init': {
-      return action.config ?? {};
-    }
-    case 'set': {
-      const newState = { ...state };
-      if (action.value === '') {
-        delete newState[action.name];
-      } else {
-        newState[action.name] = action.value;
-      }
-      return newState;
-    }
-    case 'toggle': {
-      const newState = { ...state };
-      if (action.checked) {
-        newState[action.name] = action.default ? action.default[0] : true;
-      } else if (action.name in newState) {
-        delete newState[action.name];
-      }
-      return newState;
-    }
-  }
 }
 
 function filterConfig(
@@ -78,8 +34,10 @@ function filterConfig(
 ): ConfigOptionsType[] {
   return options
     .map(group => ({
+      fields: group.fields.filter(item =>
+        String(item.key.toLowerCase()).includes(filter.toLowerCase()),
+      ),
       heading: group.heading,
-      fields: group.fields.filter(item => String(item.key).includes(filter)),
     }))
     .filter(group => group.fields.length > 0);
 }
@@ -88,90 +46,110 @@ function isDefault(value: unknown, defaults?: unknown[]): boolean {
   return defaults ? defaults.includes(value) : value === true;
 }
 
-function ConfigEditor(props: ConfigEditorProps): JSX.Element {
-  const { onClose: onCloseProps, isOpen, values } = props;
+interface ConfigEditorFieldProps {
+  readonly item: ConfigOptionsField;
+  readonly onChange: (name: string, value: unknown) => void;
+  readonly value: unknown;
+}
+
+function ConfigEditorField({
+  item,
+  onChange,
+  value,
+}: ConfigEditorFieldProps): React.JSX.Element {
+  return (
+    <label className={styles.searchResult}>
+      <span className={styles.searchResultDescription}>
+        <span className={styles.searchResultName}>{item.key}</span>
+        {item.label && <br />}
+        {item.label && <span> {item.label}</span>}
+      </span>
+      {item.type === 'boolean' ? (
+        <Checkbox
+          checked={Boolean(value)}
+          indeterminate={Boolean(value) && !isDefault(value, item.defaults)}
+          name={`config_${item.key}`}
+          onChange={(checked): void =>
+            onChange(
+              item.key,
+              checked ? (item.defaults?.[0] ?? true) : undefined,
+            )
+          }
+          value={item.key}
+        />
+      ) : (
+        item.enum && (
+          <Dropdown
+            name={`config_${item.key}`}
+            onChange={(value): void => onChange(item.key, value)}
+            options={item.enum}
+            value={String(value)}
+          />
+        )
+      )}
+    </label>
+  );
+}
+
+function ConfigEditor({
+  className,
+  onChange: onChangeProp,
+  options,
+  values,
+}: ConfigEditorProps): React.JSX.Element {
   const [filter, setFilter] = useState<string>('');
-  const [config, setConfig] = useReducer(reducerObject, {});
-  const [filterInput, setFilterFocus] = useFocus();
 
-  const onClose = useCallback(() => {
-    onCloseProps(config);
-  }, [onCloseProps, config]);
+  const filteredOptions = useMemo(() => {
+    return filterConfig(options, filter);
+  }, [options, filter]);
 
-  useEffect(() => {
-    setConfig({ type: 'init', config: values });
-  }, [values]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setFilterFocus();
-    }
-  }, [isOpen, setFilterFocus]);
+  const onChange = useCallback(
+    (name: string, value: unknown): void => {
+      const newConfig = { ...values };
+      if (value === '' || value == null) {
+        // Filter out falsy values from the new config
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete newConfig[name];
+      } else {
+        newConfig[name] = value;
+      }
+      onChangeProp(newConfig);
+    },
+    [values, onChangeProp],
+  );
 
   return (
-    <Modal header={props.header} isOpen={isOpen} onClose={onClose}>
+    <div
+      className={clsx(
+        'thin-scrollbar',
+        styles.searchResultContainer,
+        className,
+      )}
+    >
       <div className={styles.searchBar}>
         <Text
-          ref={filterInput}
-          type="text"
           name="config-filter"
-          value={filter}
-          className={styles.search}
           onChange={setFilter}
+          type="search"
+          value={filter}
         />
       </div>
-      <div className={clsx('thin-scrollbar', styles.searchResultContainer)}>
-        {filterConfig(props.options, filter).map(group => (
-          <div key={group.heading}>
-            <h3 className={styles.searchResultGroup}>{group.heading}</h3>
-            <div>
-              {group.fields.map(item => (
-                <label className={styles.searchResult} key={item.key}>
-                  <span className={styles.searchResultDescription}>
-                    <span className={styles.searchResultName}>{item.key}</span>
-                    {item.label && <br />}
-                    {item.label && <span>{item.label}</span>}
-                  </span>
-                  {item.type === 'boolean' && (
-                    <Checkbox
-                      name={`config_${item.key}`}
-                      value={item.key}
-                      indeterminate={
-                        Boolean(config[item.key]) &&
-                        !isDefault(config[item.key], item.defaults)
-                      }
-                      checked={Boolean(config[item.key])}
-                      onChange={(checked, name): void =>
-                        setConfig({
-                          type: 'toggle',
-                          checked,
-                          default: item.defaults,
-                          name,
-                        })
-                      }
-                    />
-                  )}
-                  {item.type === 'string' && item.enum && (
-                    <Dropdown
-                      name={`config_${item.key}`}
-                      value={String(config[item.key])}
-                      options={item.enum}
-                      onChange={(value): void => {
-                        setConfig({
-                          type: 'set',
-                          value,
-                          name: item.key,
-                        });
-                      }}
-                    />
-                  )}
-                </label>
-              ))}
-            </div>
+      {filteredOptions.map(group => (
+        <div key={group.heading}>
+          <h3 className={styles.searchResultGroup}>{group.heading}</h3>
+          <div>
+            {group.fields.map(item => (
+              <ConfigEditorField
+                item={item}
+                key={item.key}
+                onChange={onChange}
+                value={values[item.key]}
+              />
+            ))}
           </div>
-        ))}
-      </div>
-    </Modal>
+        </div>
+      ))}
+    </div>
   );
 }
 

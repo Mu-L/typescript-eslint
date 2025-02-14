@@ -1,13 +1,14 @@
 import type { AST_NODE_TYPES } from '../../ast-node-types';
 import type { BaseNode } from '../../base/BaseNode';
+import type { ImportAttribute } from '../../special/ImportAttribute/spec';
 import type { TSTypeParameterInstantiation } from '../../special/TSTypeParameterInstantiation/spec';
 import type { EntityName } from '../../unions/EntityName';
 import type { TypeNode } from '../../unions/TypeNode';
 
 export interface TSImportType extends BaseNode {
   type: AST_NODE_TYPES.TSImportType;
-  isTypeOf: boolean;
-  parameter: TypeNode;
+  argument: TypeNode;
+  attributes: ImportAttribute[];
   qualifier: EntityName | null;
-  typeParameters: TSTypeParameterInstantiation | null;
+  typeArguments: TSTypeParameterInstantiation | null;
 }

@@ -10,6 +10,12 @@
   },
   "include": [
     "file.ts",
-    "react.tsx"
+    "consistent-type-exports.ts",
+    "deprecated.ts",
+    "mixed-enums-decl.ts",
+    "react.tsx",
+    "var-declaration.ts",
+    "errors.ts",
+    "switch-exhaustiveness-check.ts"
   ]
 }

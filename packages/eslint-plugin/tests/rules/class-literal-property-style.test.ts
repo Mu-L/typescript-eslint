@@ -1,9 +1,8 @@
-import rule from '../../src/rules/class-literal-property-style';
-import { RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/class-literal-property-style';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('class-literal-property-style', rule, {
   valid: [
@@ -83,6 +82,48 @@ abstract class Mx {
         \`;
       }
     `,
+    `
+      class Mx {
+        set p1(val) {}
+        get p1() {
+          return '';
+        }
+      }
+    `,
+    `
+      let p1 = 'p1';
+      class Mx {
+        set [p1](val) {}
+        get [p1]() {
+          return '';
+        }
+      }
+    `,
+    `
+      let p1 = 'p1';
+      class Mx {
+        set [/* before set */ p1 /* after set */](val) {}
+        get [/* before get */ p1 /* after get */]() {
+          return '';
+        }
+      }
+    `,
+    `
+      class Mx {
+        set ['foo'](val) {}
+        get foo() {
+          return '';
+        }
+        set bar(val) {}
+        get ['bar']() {
+          return '';
+        }
+        set ['baz'](val) {}
+        get baz() {
+          return '';
+        }
+      }
+    `,
     {
       code: `
         class Mx {
@@ -98,7 +139,7 @@ abstract class Mx {
     {
       code: `
 class Mx {
-  public declare readonly foo = 1;
+  declare public readonly foo = 1;
 }
       `,
       options: ['getters'],
@@ -177,6 +218,74 @@ class Mx {
       `,
       options: ['getters'],
     },
+    {
+      code: `
+        class A {
+          private readonly foo: string = 'bar';
+          constructor(foo: string) {
+            this.foo = foo;
+          }
+        }
+      `,
+      options: ['getters'],
+    },
+    {
+      code: `
+        class A {
+          private readonly foo: string = 'bar';
+          constructor(foo: string) {
+            this['foo'] = foo;
+          }
+        }
+      `,
+      options: ['getters'],
+    },
+    {
+      code: `
+        class A {
+          private readonly foo: string = 'bar';
+          constructor(foo: string) {
+            const bar = new (class {
+              private readonly foo: string = 'baz';
+              constructor() {
+                this.foo = 'qux';
+              }
+            })();
+            this['foo'] = foo;
+          }
+        }
+      `,
+      options: ['getters'],
+    },
+    {
+      // https://github.com/typescript-eslint/typescript-eslint/issues/3602
+      // getter with override modifier should be ignored
+      code: `
+declare abstract class BaseClass {
+  get cursor(): string;
+}
+
+class ChildClass extends BaseClass {
+  override get cursor() {
+    return 'overridden value';
+  }
+}
+      `,
+    },
+    {
+      // https://github.com/typescript-eslint/typescript-eslint/issues/3602
+      // property with override modifier should be ignored
+      code: `
+declare abstract class BaseClass {
+  protected readonly foo: string;
+}
+
+class ChildClass extends BaseClass {
+  protected override readonly foo = 'bar';
+}
+      `,
+      options: ['getters'],
+    },
   ],
   invalid: [
     {
@@ -187,16 +296,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 7,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   readonly p1 = 'hello world';
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 7,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -208,16 +322,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 7,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   readonly p1 = \`hello world\`;
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 7,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -229,16 +348,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 14,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   static readonly p1 = 'hello world';
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 14,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -250,16 +374,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 21,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   public static readonly foo = 1;
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 21,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -271,16 +400,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 15,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   public readonly [myValue] = 'a literal value';
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 15,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -292,16 +426,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 15,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   public readonly [myValue] = 12345n;
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 15,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -311,16 +450,21 @@ class Mx {
   public readonly [myValue] = 'a literal value';
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 20,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   public get [myValue]() { return 'a literal value'; }
 }
       `,
-      errors: [
-        {
-          messageId: 'preferGetterStyle',
-          column: 20,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['getters'],
@@ -331,16 +475,21 @@ class Mx {
   readonly p1 = 'hello world';
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 12,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   get p1() { return 'hello world'; }
 }
       `,
-      errors: [
-        {
-          messageId: 'preferGetterStyle',
-          column: 12,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['getters'],
@@ -351,16 +500,21 @@ class Mx {
   readonly p1 = \`hello world\`;
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 12,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   get p1() { return \`hello world\`; }
 }
       `,
-      errors: [
-        {
-          messageId: 'preferGetterStyle',
-          column: 12,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['getters'],
@@ -371,16 +525,21 @@ class Mx {
   static readonly p1 = 'hello world';
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 19,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   static get p1() { return 'hello world'; }
 }
       `,
-      errors: [
-        {
-          messageId: 'preferGetterStyle',
-          column: 19,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['getters'],
@@ -393,16 +552,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 17,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   protected readonly p1 = 'hello world';
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 17,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['fields'],
@@ -413,16 +577,21 @@ class Mx {
   protected readonly p1 = 'hello world';
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 22,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   protected get p1() { return 'hello world'; }
 }
       `,
-      errors: [
-        {
-          messageId: 'preferGetterStyle',
-          column: 22,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['getters'],
@@ -435,16 +604,21 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 21,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   public static readonly p1 = 'hello world';
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 21,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -454,16 +628,21 @@ class Mx {
   public static readonly p1 = 'hello world';
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 26,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   public static get p1() { return 'hello world'; }
 }
       `,
-      errors: [
-        {
-          messageId: 'preferGetterStyle',
-          column: 26,
-          line: 3,
+            },
+          ],
         },
       ],
       options: ['getters'],
@@ -483,7 +662,15 @@ class Mx {
   }
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 14,
+          line: 3,
+          messageId: 'preferFieldStyle',
+          suggestions: [
+            {
+              messageId: 'preferFieldStyleSuggestion',
+              output: `
 class Mx {
   public readonly myValue = gql\`
       {
@@ -495,11 +682,8 @@ class Mx {
     \`;
 }
       `,
-      errors: [
-        {
-          messageId: 'preferFieldStyle',
-          column: 14,
-          line: 3,
+            },
+          ],
         },
       ],
     },
@@ -516,7 +700,15 @@ class Mx {
   \`;
 }
       `,
-      output: `
+      errors: [
+        {
+          column: 19,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
 class Mx {
   public get myValue() { return gql\`
     {
@@ -528,11 +720,129 @@ class Mx {
   \`; }
 }
       `,
+            },
+          ],
+        },
+      ],
+      options: ['getters'],
+    },
+    {
+      code: `
+class A {
+  private readonly foo: string = 'bar';
+  constructor(foo: string) {
+    const bar = new (class {
+      private readonly foo: string = 'baz';
+      constructor() {
+        this.foo = 'qux';
+      }
+    })();
+  }
+}
+      `,
       errors: [
         {
-          messageId: 'preferGetterStyle',
-          column: 19,
+          column: 20,
           line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
+class A {
+  private get foo() { return 'bar'; }
+  constructor(foo: string) {
+    const bar = new (class {
+      private readonly foo: string = 'baz';
+      constructor() {
+        this.foo = 'qux';
+      }
+    })();
+  }
+}
+      `,
+            },
+          ],
+        },
+      ],
+      options: ['getters'],
+    },
+    {
+      code: `
+class A {
+  private readonly ['foo']: string = 'bar';
+  constructor(foo: string) {
+    const bar = new (class {
+      private readonly foo: string = 'baz';
+      constructor() {}
+    })();
+
+    if (bar) {
+      this.foo = 'baz';
+    }
+  }
+}
+      `,
+      errors: [
+        {
+          column: 24,
+          line: 6,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
+class A {
+  private readonly ['foo']: string = 'bar';
+  constructor(foo: string) {
+    const bar = new (class {
+      private get foo() { return 'baz'; }
+      constructor() {}
+    })();
+
+    if (bar) {
+      this.foo = 'baz';
+    }
+  }
+}
+      `,
+            },
+          ],
+        },
+      ],
+      options: ['getters'],
+    },
+    {
+      code: `
+class A {
+  private readonly foo: string = 'bar';
+  constructor(foo: string) {
+    function func() {
+      this.foo = 'aa';
+    }
+  }
+}
+      `,
+      errors: [
+        {
+          column: 20,
+          line: 3,
+          messageId: 'preferGetterStyle',
+          suggestions: [
+            {
+              messageId: 'preferGetterStyleSuggestion',
+              output: `
+class A {
+  private get foo() { return 'bar'; }
+  constructor(foo: string) {
+    function func() {
+      this.foo = 'aa';
+    }
+  }
+}
+      `,
+            },
+          ],
         },
       ],
       options: ['getters'],

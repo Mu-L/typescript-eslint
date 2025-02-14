@@ -10,7 +10,8 @@ exports[`AST Fixtures declaration ExportNamedDeclaration interface AST Alignment
     body: Array [
       ExportNamedDeclaration {
         type: 'ExportNamedDeclaration',
-        assertions: Array [],
+-       attributes: Array [],
++       assertions: Array [],
         declaration: TSInterfaceDeclaration {
           type: 'TSInterfaceDeclaration',
           body: TSInterfaceBody {
@@ -23,9 +24,13 @@ exports[`AST Fixtures declaration ExportNamedDeclaration interface AST Alignment
               end: { column: 23, line: 1 },
             },
           },
+-         declare: false,
+-         extends: Array [],
           id: Identifier {
             type: 'Identifier',
+-           decorators: Array [],
             name: 'Foo',
+-           optional: false,
 
             range: [17, 20],
             loc: {

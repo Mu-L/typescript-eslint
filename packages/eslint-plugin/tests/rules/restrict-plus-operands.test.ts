@@ -1,65 +1,68 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/restrict-plus-operands';
-import { getFixturesRootDir, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootPath = getFixturesRootDir();
 
 const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    tsconfigRootDir: rootPath,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootPath,
+    },
   },
 });
 
 ruleTester.run('restrict-plus-operands', rule, {
   valid: [
-    'var x = 5;',
-    "var y = '10';",
-    'var z = 8.2;',
-    "var w = '6.5';",
-    'var foo = 5 + 10;',
-    "var foo = '5.5' + '10';",
-    "var foo = parseInt('5.5', 10) + 10;",
-    "var foo = parseFloat('5.5', 10) + 10;",
-    'var foo = 1n + 1n;',
-    'var foo = BigInt(1) + 1n;',
+    'let x = 5;',
+    "let y = '10';",
+    'let z = 8.2;',
+    "let w = '6.5';",
+    'let foo = 5 + 10;',
+    "let foo = '5.5' + '10';",
+    "let foo = parseInt('5.5', 10) + 10;",
+    "let foo = parseFloat('5.5', 10) + 10;",
+    'let foo = 1n + 1n;',
+    'let foo = BigInt(1) + 1n;',
     `
-      var foo = 1n;
+      let foo = 1n;
       foo + 2n;
     `,
     `
 function test(s: string, n: number): number {
   return 2;
 }
-var foo = test('5.5', 10) + 10;
+let foo = test('5.5', 10) + 10;
     `,
     `
-var x = 5;
-var z = 8.2;
-var foo = x + z;
+let x = 5;
+let z = 8.2;
+let foo = x + z;
     `,
     `
-var w = '6.5';
-var y = '10';
-var foo = y + w;
+let w = '6.5';
+let y = '10';
+let foo = y + w;
     `,
-    'var foo = 1 + 1;',
-    "var foo = '1' + '1';",
+    'let foo = 1 + 1;',
+    "let foo = '1' + '1';",
     `
-var pair: { first: number; second: string } = { first: 5, second: '10' };
-var foo = pair.first + 10;
-    `,
-    `
-var pair: { first: number; second: string } = { first: 5, second: '10' };
-var foo = pair.first + (10 as number);
+let pair: { first: number; second: string } = { first: 5, second: '10' };
+let foo = pair.first + 10;
     `,
     `
-var pair: { first: number; second: string } = { first: 5, second: '10' };
-var foo = '5.5' + pair.second;
+let pair: { first: number; second: string } = { first: 5, second: '10' };
+let foo = pair.first + (10 as number);
     `,
     `
-var pair: { first: number; second: string } = { first: 5, second: '10' };
-var foo = ('5.5' as string) + pair.second;
+let pair: { first: number; second: string } = { first: 5, second: '10' };
+let foo = '5.5' + pair.second;
+    `,
+    `
+let pair: { first: number; second: string } = { first: 5, second: '10' };
+let foo = ('5.5' as string) + pair.second;
     `,
     `
       const foo =
@@ -157,31 +160,127 @@ function A(s: string) {
 }
 const b = A('') + '!';
     `,
+    `
+declare const a: \`template\${string}\`;
+declare const b: '';
+const x = a + b;
+    `,
+    `
+const a: \`template\${0}\`;
+declare const b: '';
+const x = a + b;
+    `,
     {
       code: `
-let foo: number = 0;
-foo += 1;
+        declare const a: RegExp;
+        declare const b: string;
+        const x = a + b;
       `,
       options: [
         {
-          checkCompoundAssignments: false,
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: true,
         },
       ],
     },
     {
       code: `
-let foo: number = 0;
-foo += 'string';
+        const a = /regexp/;
+        declare const b: string;
+        const x = a + b;
       `,
       options: [
         {
-          checkCompoundAssignments: false,
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: true,
+        },
+      ],
+    },
+    // TypeScript handles this case, so we don't have to
+    {
+      code: `
+const f = (a: RegExp, b: RegExp) => a + b;
+      `,
+      options: [
+        {
+          allowRegExp: true,
         },
       ],
     },
     {
       code: `
-export const f = (a: any, b: any) => a + b;
+let foo: string | undefined;
+foo = foo + 'some data';
+      `,
+      options: [
+        {
+          allowNullish: true,
+        },
+      ],
+    },
+    {
+      code: `
+let foo: string | null;
+foo = foo + 'some data';
+      `,
+      options: [
+        {
+          allowNullish: true,
+        },
+      ],
+    },
+    {
+      code: `
+let foo: string | null | undefined;
+foo = foo + 'some data';
+      `,
+      options: [
+        {
+          allowNullish: true,
+        },
+      ],
+    },
+    {
+      code: `
+let foo = '';
+foo += 0;
+      `,
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+          skipCompoundAssignments: true,
+        },
+      ],
+    },
+    {
+      code: `
+let foo = 0;
+foo += '';
+      `,
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+          skipCompoundAssignments: true,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: any, b: any) => a + b;
       `,
       options: [
         {
@@ -191,7 +290,7 @@ export const f = (a: any, b: any) => a + b;
     },
     {
       code: `
-export const f = (a: any, b: string) => a + b;
+const f = (a: any, b: string) => a + b;
       `,
       options: [
         {
@@ -201,7 +300,7 @@ export const f = (a: any, b: string) => a + b;
     },
     {
       code: `
-export const f = (a: any, b: bigint) => a + b;
+const f = (a: any, b: bigint) => a + b;
       `,
       options: [
         {
@@ -211,252 +310,476 @@ export const f = (a: any, b: bigint) => a + b;
     },
     {
       code: `
-export const f = (a: any, b: number) => a + b;
+const f = (a: any, b: number) => a + b;
       `,
       options: [
         {
           allowAny: true,
         },
       ],
+    },
+    {
+      code: `
+const f = (a: any, b: boolean) => a + b;
+      `,
+      options: [
+        {
+          allowAny: true,
+          allowBoolean: true,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: string, b: string | number) => a + b;
+      `,
+      options: [
+        {
+          allowAny: true,
+          allowBoolean: true,
+          allowNullish: true,
+          allowNumberAndString: true,
+          allowRegExp: true,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: string | number, b: number) => a + b;
+      `,
+      options: [
+        {
+          allowAny: true,
+          allowBoolean: true,
+          allowNullish: true,
+          allowNumberAndString: true,
+          allowRegExp: true,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: string | number, b: string | number) => a + b;
+      `,
+      options: [
+        {
+          allowAny: true,
+          allowBoolean: true,
+          allowNullish: true,
+          allowNumberAndString: true,
+          allowRegExp: true,
+        },
+      ],
+    },
+    {
+      code: "let foo = '1' + 1n;",
+      options: [{ allowNumberAndString: true }],
     },
   ],
   invalid: [
     {
-      code: "var foo = '1' + 1;",
+      code: "let foo = '1' + 1;",
       errors: [
         {
-          messageId: 'notStrings',
-          line: 1,
           column: 11,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+          },
+          line: 1,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [{ allowNumberAndString: false }],
+    },
+    {
+      code: "let foo = '1' + 1;",
+      errors: [
+        {
+          column: 11,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike: 'string',
+          },
+          line: 1,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
-      code: 'var foo = [] + {};',
+      code: 'let foo = [] + {};',
       errors: [
         {
-          messageId: 'notValidTypes',
-          line: 1,
           column: 11,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'never[]',
+          },
+          endColumn: 13,
+          line: 1,
+          messageId: 'invalid',
+        },
+        {
+          column: 16,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: '{}',
+          },
+          endColumn: 18,
+          line: 1,
+          messageId: 'invalid',
         },
       ],
     },
     {
-      code: "var foo = 5 + '10';",
+      code: "let foo = 5 + '10';",
       errors: [
         {
-          messageId: 'notStrings',
-          line: 1,
           column: 11,
+          data: {
+            left: 'number',
+            right: 'string',
+            stringLike: 'string',
+          },
+          line: 1,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
-      code: 'var foo = [] + 5;',
+      code: 'let foo = [] + 5;',
       errors: [
         {
-          messageId: 'notNumbers',
-          line: 1,
           column: 11,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'never[]',
+          },
+          endColumn: 13,
+          line: 1,
+          messageId: 'invalid',
         },
       ],
     },
     {
-      code: 'var foo = [] + [];',
+      code: 'let foo = [] + [];',
       errors: [
         {
-          messageId: 'notValidTypes',
-          line: 1,
           column: 11,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'never[]',
+          },
+          endColumn: 13,
+          line: 1,
+          messageId: 'invalid',
+        },
+        {
+          column: 16,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'never[]',
+          },
+          endColumn: 18,
+          line: 1,
+          messageId: 'invalid',
         },
       ],
     },
     {
-      code: 'var foo = 5 + [];',
+      code: 'let foo = 5 + [3];',
       errors: [
         {
-          messageId: 'notNumbers',
+          column: 15,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'number[]',
+          },
+          endColumn: 18,
           line: 1,
-          column: 11,
+          messageId: 'invalid',
         },
       ],
     },
     {
-      code: "var foo = '5' + {};",
+      code: "let foo = '5' + {};",
       errors: [
         {
-          messageId: 'notStrings',
+          column: 17,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: '{}',
+          },
+          endColumn: 19,
           line: 1,
-          column: 11,
+          messageId: 'invalid',
         },
       ],
     },
     {
-      code: "var foo = 5.5 + '5';",
+      code: "let foo = 5.5 + '5';",
       errors: [
         {
-          messageId: 'notStrings',
-          line: 1,
           column: 11,
+          data: {
+            left: 'number',
+            right: 'string',
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+          },
+          line: 1,
+          messageId: 'mismatched',
         },
       ],
+      options: [{ allowNumberAndString: false }],
     },
     {
-      code: "var foo = '5.5' + 5;",
+      code: "let foo = '5.5' + 5;",
       errors: [
         {
-          messageId: 'notStrings',
-          line: 1,
           column: 11,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+          },
+          line: 1,
+          messageId: 'mismatched',
         },
       ],
+      options: [{ allowNumberAndString: false }],
     },
     {
       code: `
-var x = 5;
-var y = '10';
-var foo = x + y;
+let x = 5;
+let y = '10';
+let foo = x + y;
       `,
       errors: [
         {
-          messageId: 'notStrings',
+          column: 11,
+          data: {
+            left: 'number',
+            right: 'string',
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+          },
           line: 4,
-          column: 11,
+          messageId: 'mismatched',
         },
       ],
+      options: [{ allowNumberAndString: false }],
     },
     {
       code: `
-var x = 5;
-var y = '10';
-var foo = y + x;
+let x = 5;
+let y = '10';
+let foo = y + x;
       `,
       errors: [
         {
-          messageId: 'notStrings',
+          column: 11,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+          },
           line: 4,
-          column: 11,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [{ allowNumberAndString: false }],
+    },
+    {
+      code: `
+let x = 5;
+let foo = x + {};
+      `,
+      errors: [
+        {
+          column: 15,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: '{}',
+          },
+          line: 3,
+          messageId: 'invalid',
         },
       ],
     },
     {
       code: `
-var x = 5;
-var foo = x + {};
+let y = '10';
+let foo = [] + y;
       `,
       errors: [
         {
-          messageId: 'notNumbers',
-          line: 3,
           column: 11,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'never[]',
+          },
+          line: 3,
+          messageId: 'invalid',
         },
       ],
     },
     {
       code: `
-var y = '10';
-var foo = [] + y;
+let pair = { first: 5, second: '10' };
+let foo = pair + pair;
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 11,
+          data: {
+            stringLike: 'string',
+            type: '{ first: number; second: string; }',
+          },
+          endColumn: 15,
+          line: 3,
+          messageId: 'invalid',
+        },
+        {
+          column: 18,
+          data: {
+            stringLike: 'string',
+            type: '{ first: number; second: string; }',
+          },
+          endColumn: 22,
+          line: 3,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
-var pair: { first: number; second: string } = { first: 5, second: '10' };
-var foo = pair.first + '10';
+type Valued = { value: number };
+let value: Valued = { value: 0 };
+let combined = value + 0;
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
-          column: 11,
+          column: 16,
+          data: {
+            stringLike: 'string',
+            type: 'Valued',
+          },
+          endColumn: 21,
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
-      code: `
-var pair: { first: number; second: string } = { first: 5, second: '10' };
-var foo = 5 + pair.second;
-      `,
+      code: 'let foo = 1n + 1;',
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 11,
-        },
-      ],
-    },
-    {
-      code: "var foo = parseInt('5.5', 10) + '10';",
-      errors: [
-        {
-          messageId: 'notStrings',
+          data: {
+            left: 'bigint',
+            right: 'number',
+          },
           line: 1,
+          messageId: 'bigintAndNumber',
+        },
+      ],
+    },
+    {
+      code: 'let foo = 1 + 1n;',
+      errors: [
+        {
           column: 11,
+          data: {
+            left: 'number',
+            right: 'bigint',
+          },
+          line: 1,
+          messageId: 'bigintAndNumber',
         },
       ],
     },
     {
       code: `
-var pair = { first: 5, second: '10' };
-var foo = pair + pair;
-      `,
-      errors: [
-        {
-          messageId: 'notValidTypes',
-          line: 3,
-          column: 11,
-        },
-      ],
-    },
-    {
-      code: 'var foo = 1n + 1;',
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 1,
-          column: 11,
-        },
-      ],
-    },
-    {
-      code: 'var foo = 1 + 1n;',
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 1,
-          column: 11,
-        },
-      ],
-    },
-    {
-      code: `
-        var foo = 1n;
+        let foo = 1n;
         foo + 1;
       `,
       errors: [
         {
-          messageId: 'notBigInts',
-          line: 3,
           column: 9,
+          data: {
+            left: 'bigint',
+            right: 'number',
+          },
+          line: 3,
+          messageId: 'bigintAndNumber',
         },
       ],
     },
     {
       code: `
-        var foo = 1;
+        let foo = 1;
         foo + 1n;
       `,
       errors: [
         {
-          messageId: 'notBigInts',
-          line: 3,
           column: 9,
+          data: {
+            left: 'number',
+            right: 'bigint',
+          },
+          line: 3,
+          messageId: 'bigintAndNumber',
         },
       ],
     },
@@ -469,9 +792,23 @@ function foo<T extends string>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 10,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike: 'string',
+          },
+          line: 3,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -483,9 +820,23 @@ function foo<T extends 'a' | 'b'>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 10,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike: 'string',
+          },
+          line: 3,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -497,9 +848,23 @@ function foo<T extends number>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 10,
+          data: {
+            left: 'number',
+            right: 'string',
+            stringLike: 'string',
+          },
+          line: 3,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -511,65 +876,78 @@ function foo<T extends 1>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 10,
+          data: {
+            left: 'number',
+            right: 'string',
+            stringLike: 'string',
+          },
+          line: 3,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
-        declare const a: boolean & string;
-        declare const b: string;
+        declare const a: \`template\${number}\`;
+        declare const b: number;
         const x = a + b;
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 4,
           column: 19,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike: 'string',
+          },
+          line: 4,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
-        declare const a: number & string;
+        declare const a: never;
         declare const b: string;
         const x = a + b;
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'never',
+          },
+          line: 4,
+          messageId: 'invalid',
         },
       ],
-    },
-    {
-      code: `
-        declare const a: symbol & string;
-        declare const b: string;
-        const x = a + b;
-      `,
-      errors: [
+      options: [
         {
-          messageId: 'notStrings',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: object & string;
-        declare const b: string;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notStrings',
-          line: 4,
-          column: 19,
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -581,9 +959,49 @@ function foo<T extends 1>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'never',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: boolean & string;
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'never',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -595,9 +1013,22 @@ function foo<T extends 1>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notValidAnys',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'any',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -609,191 +1040,383 @@ function foo<T extends 1>(a: T) {
       `,
       errors: [
         {
-          messageId: 'notStrings',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: '{ a: 1; } & { b: 2; }',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
-        declare const a: boolean & number;
-        declare const b: number;
+        interface A {
+          a: 1;
+        }
+        declare const a: A;
+        declare const b: string;
         const x = a + b;
       `,
       errors: [
         {
-          messageId: 'notNumbers',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'A',
+          },
+          line: 7,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
-        declare const a: symbol & number;
-        declare const b: number;
+        interface A {
+          a: 1;
+        }
+        interface A2 extends A {
+          b: 2;
+        }
+        declare const a: A2;
+        declare const b: string;
         const x = a + b;
       `,
       errors: [
         {
-          messageId: 'notNumbers',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'A2',
+          },
+          line: 10,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
-        declare const a: object & number;
-        declare const b: number;
+        type A = { a: 1 } & { b: 2 };
+        declare const a: A;
+        declare const b: string;
         const x = a + b;
       `,
       errors: [
         {
-          messageId: 'notNumbers',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'A',
+          },
+          line: 5,
+          messageId: 'invalid',
         },
       ],
-    },
-    {
-      code: `
-        declare const a: never & number;
-        declare const b: number;
-        const x = a + b;
-      `,
-      errors: [
+      options: [
         {
-          messageId: 'notNumbers',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: any & number;
-        declare const b: number;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: { a: 1 } & { b: 2 };
-        declare const b: number;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notNumbers',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: boolean & bigint;
-        declare const b: bigint;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: number & bigint;
-        declare const b: bigint;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: symbol & bigint;
-        declare const b: bigint;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: object & bigint;
-        declare const b: bigint;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: never & bigint;
-        declare const b: bigint;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notBigInts',
-          line: 4,
-          column: 19,
-        },
-      ],
-    },
-    {
-      code: `
-        declare const a: any & bigint;
-        declare const b: bigint;
-        const x = a + b;
-      `,
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 4,
-          column: 19,
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
     {
       code: `
         declare const a: { a: 1 } & { b: 2 };
+        declare const b: number;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: '{ a: 1; } & { b: 2; }',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: never;
         declare const b: bigint;
         const x = a + b;
       `,
       errors: [
         {
-          messageId: 'notBigInts',
-          line: 4,
           column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'never',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: any;
+        declare const b: bigint;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'any',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: { a: 1 } & { b: 2 };
+        declare const b: bigint;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: '{ a: 1; } & { b: 2; }',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: RegExp;
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'RegExp',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        const a = /regexp/;
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'RegExp',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: Symbol;
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'Symbol',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: symbol;
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'symbol',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        declare const a: unique symbol;
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'unique symbol',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+        const a = Symbol('');
+        declare const b: string;
+        const x = a + b;
+      `,
+      errors: [
+        {
+          column: 19,
+          data: {
+            stringLike: 'string',
+            type: 'unique symbol',
+          },
+          line: 4,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -802,34 +1425,105 @@ function foo<T extends 1>(a: T) {
 let foo: string | undefined;
 foo += 'some data';
       `,
-      options: [
-        {
-          checkCompoundAssignments: true,
-        },
-      ],
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 1,
+          data: {
+            stringLike: 'string',
+            type: 'string | undefined',
+          },
+          line: 3,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+          skipCompoundAssignments: false,
         },
       ],
     },
     {
       code: `
-let foo = '';
-foo += 0;
+let foo: string | null;
+foo += 'some data';
       `,
-      options: [
-        {
-          checkCompoundAssignments: true,
-        },
-      ],
       errors: [
         {
-          messageId: 'notStrings',
-          line: 3,
           column: 1,
+          data: {
+            stringLike: 'string',
+            type: 'string | null',
+          },
+          line: 3,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+let foo: string = '';
+foo += 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: 'string',
+            right: 'number',
+            stringLike: 'string',
+          },
+          line: 3,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
+        },
+      ],
+    },
+    {
+      code: `
+let foo = 0;
+foo += '';
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: 'number',
+            right: 'string',
+            stringLike: 'string',
+          },
+          line: 3,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+          allowNullish: false,
+          allowNumberAndString: false,
+          allowRegExp: false,
         },
       ],
     },
@@ -837,16 +1531,17 @@ foo += 0;
       code: `
 const f = (a: any, b: boolean) => a + b;
       `,
+      errors: [
+        {
+          column: 39,
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
       options: [
         {
           allowAny: true,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 2,
-          column: 35,
+          allowBoolean: false,
         },
       ],
     },
@@ -854,85 +1549,21 @@ const f = (a: any, b: boolean) => a + b;
       code: `
 const f = (a: any, b: []) => a + b;
       `,
+      errors: [
+        {
+          column: 34,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: '[]',
+          },
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
       options: [
         {
           allowAny: true,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 2,
-          column: 30,
-        },
-      ],
-    },
-
-    {
-      code: `
-const f = (a: any, b: any) => a + b;
-      `,
-      options: [
-        {
-          allowAny: false,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 2,
-          column: 31,
-        },
-      ],
-    },
-    {
-      code: `
-const f = (a: any, b: string) => a + b;
-      `,
-      options: [
-        {
-          allowAny: false,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 2,
-          column: 34,
-        },
-      ],
-    },
-    {
-      code: `
-const f = (a: any, b: bigint) => a + b;
-      `,
-      options: [
-        {
-          allowAny: false,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 2,
-          column: 34,
-        },
-      ],
-    },
-    {
-      code: `
-const f = (a: any, b: number) => a + b;
-      `,
-      options: [
-        {
-          allowAny: false,
-        },
-      ],
-      errors: [
-        {
-          messageId: 'notValidAnys',
-          line: 2,
-          column: 34,
         },
       ],
     },
@@ -940,18 +1571,225 @@ const f = (a: any, b: number) => a + b;
       code: `
 const f = (a: any, b: boolean) => a + b;
       `,
+      errors: [
+        {
+          column: 35,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'any',
+          },
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: true,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: any, b: any) => a + b;
+      `,
+      errors: [
+        {
+          column: 31,
+          line: 2,
+          messageId: 'invalid',
+        },
+        {
+          column: 35,
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
       options: [
         {
           allowAny: false,
         },
       ],
+    },
+    {
+      code: `
+const f = (a: any, b: string) => a + b;
+      `,
       errors: [
         {
-          messageId: 'notValidAnys',
+          column: 34,
           line: 2,
-          column: 35,
+          messageId: 'invalid',
         },
       ],
+      options: [
+        {
+          allowAny: false,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: any, b: bigint) => a + b;
+      `,
+      errors: [
+        {
+          column: 34,
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: any, b: number) => a + b;
+      `,
+      errors: [
+        {
+          column: 34,
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: any, b: boolean) => a + b;
+      `,
+      errors: [
+        {
+          column: 35,
+          line: 2,
+          messageId: 'invalid',
+        },
+        {
+          column: 39,
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: false,
+          allowBoolean: false,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: number, b: RegExp) => a + b;
+      `,
+      errors: [
+        {
+          column: 41,
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowRegExp: true,
+        },
+      ],
+    },
+    {
+      code: `
+let foo: string | boolean;
+foo = foo + 'some data';
+      `,
+      errors: [
+        {
+          column: 7,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `null`, `RegExp`, `undefined`',
+            type: 'string | boolean',
+          },
+          line: 3,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowBoolean: false,
+        },
+      ],
+    },
+    {
+      code: `
+let foo: boolean;
+foo = foo + 'some data';
+      `,
+      errors: [
+        {
+          column: 7,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `null`, `RegExp`, `undefined`',
+            type: 'boolean',
+          },
+          line: 3,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowBoolean: false,
+        },
+      ],
+    },
+    {
+      code: `
+const f = (a: any, b: unknown) => a + b;
+      `,
+      errors: [
+        {
+          column: 39,
+          data: {
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+            type: 'unknown',
+          },
+          line: 2,
+          messageId: 'invalid',
+        },
+      ],
+      options: [
+        {
+          allowAny: true,
+          allowBoolean: true,
+          allowNullish: true,
+          allowRegExp: true,
+        },
+      ],
+    },
+    {
+      code: "let foo = '1' + 1n;",
+      errors: [
+        {
+          column: 11,
+          data: {
+            left: 'string',
+            right: 'bigint',
+            stringLike:
+              'string, allowing a string + any of: `any`, `boolean`, `null`, `RegExp`, `undefined`',
+          },
+          line: 1,
+          messageId: 'mismatched',
+        },
+      ],
+      options: [{ allowNumberAndString: false }],
     },
   ],
 });

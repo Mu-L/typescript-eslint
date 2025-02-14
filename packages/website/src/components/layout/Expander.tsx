@@ -11,7 +11,7 @@ export interface ExpanderProps {
   readonly label: string;
 }
 
-function Expander(props: ExpanderProps): JSX.Element {
+function Expander(props: ExpanderProps): React.JSX.Element {
   const { collapsed, toggleCollapsed } = useCollapsible({
     initialState: false,
   });
@@ -24,7 +24,7 @@ function Expander(props: ExpanderProps): JSX.Element {
         />
         <span className={styles.headerLabel}>{props.label}</span>
       </button>
-      <Collapsible lazy={false} as="div" collapsed={collapsed}>
+      <Collapsible as="div" collapsed={collapsed} lazy={false}>
         <div className={styles.children}>{props.children}</div>
       </Collapsible>
     </div>

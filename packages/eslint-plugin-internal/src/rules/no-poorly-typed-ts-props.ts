@@ -1,4 +1,5 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 import { createRule } from '../util';
@@ -11,21 +12,16 @@ This rule simply warns against using them, as using them will likely introduce t
 */
 
 const BANNED_PROPERTIES = [
-  // {
-  //   type: 'Node',
-  //   property: 'parent',
-  //   fixWith: null,
-  // },
   {
     type: 'Symbol',
-    property: 'declarations',
     fixWith: 'getDeclarations()',
+    property: 'declarations',
   },
   {
     // eslint-disable-next-line @typescript-eslint/internal/prefer-ast-types-enum
     type: 'Type',
-    property: 'symbol',
     fixWith: 'getSymbol()',
+    property: 'symbol',
   },
 ];
 
@@ -36,24 +32,21 @@ export default createRule({
     docs: {
       description:
         "Enforce that rules don't use TS API properties with known bad type definitions",
-      recommended: 'error',
       requiresTypeChecking: true,
     },
     fixable: 'code',
     hasSuggestions: true,
-    schema: [],
     messages: {
       doNotUse: 'Do not use {{type}}.{{property}} because it is poorly typed.',
       doNotUseWithFixer:
         'Do not use {{type}}.{{property}} because it is poorly typed. Use {{type}}.{{fixWith}} instead.',
       suggestedFix: 'Use {{type}}.{{fixWith}} instead.',
     },
+    schema: [],
   },
   defaultOptions: [],
   create(context) {
-    const { program, esTreeNodeToTSNodeMap } =
-      ESLintUtils.getParserServices(context);
-    const checker = program.getTypeChecker();
+    const services = ESLintUtils.getParserServices(context);
 
     return {
       'MemberExpression[computed = false]'(
@@ -65,15 +58,13 @@ export default createRule({
           }
 
           // make sure the type name matches
-          const tsObjectNode = esTreeNodeToTSNodeMap.get(node.object);
-          const objectType = checker.getTypeAtLocation(tsObjectNode);
+          const objectType = services.getTypeAtLocation(node.object);
           const objectSymbol = objectType.getSymbol();
           if (objectSymbol?.getName() !== banned.type) {
             continue;
           }
 
-          const tsNode = esTreeNodeToTSNodeMap.get(node.property);
-          const symbol = checker.getSymbolAtLocation(tsNode);
+          const symbol = services.getSymbolAtLocation(node.property);
           const decls = symbol?.getDeclarations();
           const isFromTs = decls?.some(decl =>
             decl.getSourceFile().fileName.includes('/node_modules/typescript/'),
@@ -91,10 +82,6 @@ export default createRule({
                 messageId: 'suggestedFix',
                 data: banned,
                 fix(fixer): TSESLint.RuleFix | null {
-                  if (banned.fixWith == null) {
-                    return null;
-                  }
-
                   return fixer.replaceText(node.property, banned.fixWith);
                 },
               },

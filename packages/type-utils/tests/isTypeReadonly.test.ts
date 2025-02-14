@@ -1,35 +1,38 @@
-import { parseForESLint } from '@typescript-eslint/parser';
 import type { TSESTree } from '@typescript-eslint/utils';
-import path from 'path';
 import type * as ts from 'typescript';
 
-import {
-  type ReadonlynessOptions,
-  isTypeReadonly,
-} from '../src/isTypeReadonly';
+import { parseForESLint } from '@typescript-eslint/parser';
+import path from 'node:path';
+
+import type { ReadonlynessOptions } from '../src/isTypeReadonly';
+
+import { isTypeReadonly } from '../src/isTypeReadonly';
+import { expectToHaveParserServices } from './test-utils/expectToHaveParserServices';
 
 describe('isTypeReadonly', () => {
   const rootDir = path.join(__dirname, 'fixtures');
 
   describe('TSTypeAliasDeclaration ', () => {
     function getType(code: string): {
+      program: ts.Program;
       type: ts.Type;
-      checker: ts.TypeChecker;
     } {
       const { ast, services } = parseForESLint(code, {
-        project: './tsconfig.json',
+        disallowAutomaticSingleRunInference: true,
         filePath: path.join(rootDir, 'file.ts'),
+        project: './tsconfig.json',
         tsconfigRootDir: rootDir,
       });
-      const checker = services.program.getTypeChecker();
+      expectToHaveParserServices(services);
+      const program = services.program;
       const esTreeNodeToTSNodeMap = services.esTreeNodeToTSNodeMap;
 
       const declaration = ast.body[0] as TSESTree.TSTypeAliasDeclaration;
       return {
-        type: checker.getTypeAtLocation(
-          esTreeNodeToTSNodeMap.get(declaration.id),
-        ),
-        checker,
+        program,
+        type: program
+          .getTypeChecker()
+          .getTypeAtLocation(esTreeNodeToTSNodeMap.get(declaration.id)),
       };
     }
 
@@ -38,9 +41,9 @@ describe('isTypeReadonly', () => {
       options: ReadonlynessOptions | undefined,
       expected: boolean,
     ): void {
-      const { type, checker } = getType(code);
+      const { program, type } = getType(code);
 
-      const result = isTypeReadonly(checker, type, options);
+      const result = isTypeReadonly(program, type, options);
       expect(result).toBe(expected);
     }
 
@@ -306,6 +309,53 @@ describe('isTypeReadonly', () => {
           ['type Test = ReadonlySet<string>;'],
           ['type Test = ReadonlyMap<string, string>;'],
         ])('handles non fully readonly sets and maps', runTests);
+      });
+    });
+
+    describe('allowlist', () => {
+      const options: ReadonlynessOptions = {
+        allow: [
+          {
+            from: 'lib',
+            name: 'RegExp',
+          },
+          {
+            from: 'file',
+            name: 'Foo',
+          },
+        ],
+      };
+
+      function runTestIsReadonly(code: string): void {
+        runTestForAliasDeclaration(code, options, true);
+      }
+
+      function runTestIsNotReadonly(code: string): void {
+        runTestForAliasDeclaration(code, options, false);
+      }
+
+      describe('is readonly', () => {
+        it.each([
+          [
+            'interface Foo {readonly prop: RegExp}; type Test = (arg: Foo) => void;',
+          ],
+          [
+            'interface Foo {prop: RegExp}; type Test = (arg: Readonly<Foo>) => void;',
+          ],
+          ['interface Foo {prop: string}; type Test = (arg: Foo) => void;'],
+        ])('correctly marks allowlisted types as readonly', runTestIsReadonly);
+      });
+
+      describe('is not readonly', () => {
+        it.each([
+          [
+            'interface Bar {prop: RegExp}; type Test = (arg: Readonly<Bar>) => void;',
+          ],
+          ['interface Bar {prop: string}; type Test = (arg: Bar) => void;'],
+        ])(
+          'correctly marks allowlisted types as readonly',
+          runTestIsNotReadonly,
+        );
       });
     });
   });

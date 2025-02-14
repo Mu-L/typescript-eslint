@@ -1,9 +1,8 @@
-import rule from '../../src/rules/prefer-enum-initializers';
-import { RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/prefer-enum-initializers';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('prefer-enum-initializers', rule, {
   valid: [
@@ -39,9 +38,9 @@ enum Direction {
       `,
       errors: [
         {
-          messageId: 'defineInitializer',
           data: { name: 'Up' },
           line: 3,
+          messageId: 'defineInitializer',
           suggestions: [
             {
               messageId: 'defineInitializerSuggestion',
@@ -80,9 +79,9 @@ enum Direction {
       `,
       errors: [
         {
-          messageId: 'defineInitializer',
           data: { name: 'Up' },
           line: 3,
+          messageId: 'defineInitializer',
           suggestions: [
             {
               messageId: 'defineInitializerSuggestion',
@@ -114,9 +113,9 @@ enum Direction {
           ],
         },
         {
-          messageId: 'defineInitializer',
           data: { name: 'Down' },
           line: 4,
+          messageId: 'defineInitializer',
           suggestions: [
             {
               messageId: 'defineInitializerSuggestion',
@@ -158,9 +157,9 @@ enum Direction {
       `,
       errors: [
         {
-          messageId: 'defineInitializer',
           data: { name: 'Down' },
           line: 4,
+          messageId: 'defineInitializer',
           suggestions: [
             {
               messageId: 'defineInitializerSuggestion',
@@ -202,9 +201,9 @@ enum Direction {
       `,
       errors: [
         {
-          messageId: 'defineInitializer',
           data: { name: 'Up' },
           line: 3,
+          messageId: 'defineInitializer',
           suggestions: [
             {
               messageId: 'defineInitializerSuggestion',

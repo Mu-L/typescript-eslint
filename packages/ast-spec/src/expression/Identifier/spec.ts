@@ -5,8 +5,8 @@ import type { TSTypeAnnotation } from '../../special/TSTypeAnnotation/spec';
 
 export interface Identifier extends BaseNode {
   type: AST_NODE_TYPES.Identifier;
+  decorators: Decorator[];
   name: string;
-  typeAnnotation?: TSTypeAnnotation;
-  optional?: boolean;
-  decorators?: Decorator[];
+  optional: boolean;
+  typeAnnotation: TSTypeAnnotation | undefined;
 }

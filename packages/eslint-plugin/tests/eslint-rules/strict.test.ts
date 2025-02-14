@@ -1,27 +1,12 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { getESLintCoreRule } from '../../src/util/getESLintCoreRule';
-import { RuleTester } from '../RuleTester';
 
 const rule = getESLintCoreRule('strict');
 
-const ruleTester = new RuleTester({
-  parserOptions: {
-    ecmaVersion: 6,
-    sourceType: 'module',
-  },
-  parser: '@typescript-eslint/parser',
-});
+const ruleTester = new RuleTester();
 
 ruleTester.run('strict', rule, {
-  valid: [
-    // https://github.com/typescript-eslint/typescript-eslint/issues/58
-    `
-window.whatevs = {
-  myFunc() {
-    console.log('yep');
-  },
-};
-    `,
-  ],
   invalid: [
     {
       // https://github.com/typescript-eslint/typescript-eslint/issues/58
@@ -32,18 +17,30 @@ window.whatevs = {
   },
 };
       `,
-      parserOptions: {
-        sourceType: 'script',
-      },
       errors: [
         {
-          message: "Use the function form of 'use strict'.",
-          line: 3,
           column: 9,
+          line: 3,
+          message: "Use the function form of 'use strict'.",
           // the base rule doesn't use messageId
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       ],
+      languageOptions: {
+        parserOptions: {
+          sourceType: 'script',
+        },
+      },
     },
+  ],
+  valid: [
+    // https://github.com/typescript-eslint/typescript-eslint/issues/58
+    `
+window.whatevs = {
+  myFunc() {
+    console.log('yep');
+  },
+};
+    `,
   ],
 });

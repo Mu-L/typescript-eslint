@@ -2,7 +2,6 @@ import type { AST_NODE_TYPES } from '../../ast-node-types';
 import type { Accessibility } from '../../base/Accessibility';
 import type { BaseNode } from '../../base/BaseNode';
 import type { TSTypeAnnotation } from '../../special/TSTypeAnnotation/spec';
-import type { Expression } from '../../unions/Expression';
 import type {
   PropertyName,
   PropertyNameComputed,
@@ -11,27 +10,25 @@ import type {
 
 interface TSPropertySignatureBase extends BaseNode {
   type: AST_NODE_TYPES.TSPropertySignature;
-  key: PropertyName;
-  optional?: boolean;
+  accessibility: Accessibility | undefined;
   computed: boolean;
-  typeAnnotation?: TSTypeAnnotation;
-  initializer?: Expression;
-  readonly?: boolean;
-  static?: boolean;
-  export?: boolean;
-  accessibility?: Accessibility;
+  key: PropertyName;
+  optional: boolean;
+  readonly: boolean;
+  static: boolean;
+  typeAnnotation: TSTypeAnnotation | undefined;
 }
 
 export interface TSPropertySignatureComputedName
   extends TSPropertySignatureBase {
-  key: PropertyNameComputed;
   computed: true;
+  key: PropertyNameComputed;
 }
 
 export interface TSPropertySignatureNonComputedName
   extends TSPropertySignatureBase {
-  key: PropertyNameNonComputed;
   computed: false;
+  key: PropertyNameNonComputed;
 }
 
 export type TSPropertySignature =

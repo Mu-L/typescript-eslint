@@ -7,7 +7,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: flex-end;
+  align-items: stretch;
   max-width: 800px;
   padding: 0;
 }
@@ -19,6 +19,7 @@
 }
 
 .sponsorsTier img {
+  background: white;
   display: block;
   margin: auto;
 }
@@ -70,18 +71,17 @@
   width: 45px;
 }
 
-@media screen and (min-width: 700px) {
+@media screen and (width >= 700px) {
   .tierArea {
     min-width: 500px;
     width: 50vw;
   }
 }
 
-@media screen and (min-width: 1150px) {
+@media screen and (width >= 1150px) {
   .tierArea {
     margin: 16px 0;
     width: auto;
-    padding: 0 60px;
   }
 
   .tier-gold-supporter {

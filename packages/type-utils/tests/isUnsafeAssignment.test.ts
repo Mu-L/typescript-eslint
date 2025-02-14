@@ -1,38 +1,42 @@
-import { parseForESLint } from '@typescript-eslint/parser';
 import type { TSESTree } from '@typescript-eslint/utils';
-import path from 'path';
 import type * as ts from 'typescript';
 
+import { parseForESLint } from '@typescript-eslint/parser';
+import path from 'node:path';
+
 import { isUnsafeAssignment } from '../src/isUnsafeAssignment';
+import { expectToHaveParserServices } from './test-utils/expectToHaveParserServices';
 
 describe('isUnsafeAssignment', () => {
   const rootDir = path.join(__dirname, 'fixtures');
 
-  function getTypes(code: string): {
+  function getTypes(
+    code: string,
+    declarationIndex = 0,
+  ): {
+    checker: ts.TypeChecker;
+    receiver: ts.Type;
     sender: ts.Type;
     senderNode: TSESTree.Node;
-    receiver: ts.Type;
-    checker: ts.TypeChecker;
   } {
     const { ast, services } = parseForESLint(code, {
-      project: './tsconfig.json',
+      disallowAutomaticSingleRunInference: true,
       filePath: path.join(rootDir, 'file.ts'),
+      project: './tsconfig.json',
       tsconfigRootDir: rootDir,
     });
+    expectToHaveParserServices(services);
     const checker = services.program.getTypeChecker();
-    const esTreeNodeToTSNodeMap = services.esTreeNodeToTSNodeMap;
 
-    const declaration = ast.body[0] as TSESTree.VariableDeclaration;
+    const declaration = ast.body[
+      declarationIndex
+    ] as TSESTree.VariableDeclaration;
     const declarator = declaration.declarations[0];
     return {
-      receiver: checker.getTypeAtLocation(
-        esTreeNodeToTSNodeMap.get(declarator.id),
-      ),
-      sender: checker.getTypeAtLocation(
-        esTreeNodeToTSNodeMap.get(declarator.init!),
-      ),
-      senderNode: declarator.init!,
       checker,
+      receiver: services.getTypeAtLocation(declarator.id),
+      sender: services.getTypeAtLocation(declarator.init!),
+      senderNode: declarator.init!,
     };
   }
 
@@ -44,14 +48,14 @@ describe('isUnsafeAssignment', () => {
       receiverStr: string,
     ): void {
       expect(result).toBeTruthy();
-      const { sender, receiver } = result as Exclude<typeof result, false>;
+      const { receiver, sender } = result as Exclude<typeof result, false>;
 
       expect(checker.typeToString(sender)).toBe(senderStr);
       expect(checker.typeToString(receiver)).toBe(receiverStr);
     }
 
     it('any to a non-any', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: string = (1 as any);',
       );
 
@@ -64,7 +68,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any in a generic position to a non-any', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<string> = new Set<any>();',
       );
 
@@ -77,7 +81,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any in a generic position to a non-any (multiple generics)', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Map<string, string> = new Map<string, any>();',
       );
 
@@ -90,7 +94,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any[] in a generic position to a non-any[]', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<string[]> = new Set<any[]>();',
       );
 
@@ -103,7 +107,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any in a generic position to a non-any (nested)', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<Set<Set<string>>> = new Set<Set<Set<any>>>();',
       );
 
@@ -114,11 +118,26 @@ describe('isUnsafeAssignment', () => {
         'Set<Set<Set<string>>>',
       );
     });
+
+    it('circular reference', () => {
+      const { checker, receiver, sender, senderNode } = getTypes(
+        `type T = [string, T[]];
+        const test: T = ["string", []] as any;`,
+        1,
+      );
+
+      expectTypesAre(
+        isUnsafeAssignment(sender, receiver, checker, senderNode),
+        checker,
+        'any',
+        'T',
+      );
+    });
   });
 
   describe('safe', () => {
     it('non-any to a non-any', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: string = "";',
       );
 
@@ -126,13 +145,13 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('non-any to a any', () => {
-      const { sender, receiver, checker } = getTypes('const test: any = "";');
+      const { checker, receiver, sender } = getTypes('const test: any = "";');
 
       expect(isUnsafeAssignment(sender, receiver, checker, null)).toBeFalsy();
     });
 
     it('non-any in a generic position to a non-any', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<string> = new Set<string>();',
       );
 
@@ -140,7 +159,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('non-any in a generic position to a non-any (multiple generics)', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Map<string, string> = new Map<string, string>();',
       );
 
@@ -148,7 +167,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('non-any[] in a generic position to a non-any[]', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<string[]> = new Set<string[]>();',
       );
 
@@ -156,7 +175,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('non-any in a generic position to a non-any (nested)', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<Set<Set<string>>> = new Set<Set<Set<string>>>();',
       );
 
@@ -164,7 +183,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('non-any in a generic position to a any (nested)', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<Set<Set<any>>> = new Set<Set<Set<string>>>();',
       );
 
@@ -172,7 +191,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any to a unknown', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: unknown = [] as any;',
       );
 
@@ -180,7 +199,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any[] in a generic position to a unknown[]', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: unknown[] = [] as any[]',
       );
 
@@ -188,7 +207,7 @@ describe('isUnsafeAssignment', () => {
     });
 
     it('any in a generic position to a unknown (nested)', () => {
-      const { sender, receiver, checker } = getTypes(
+      const { checker, receiver, sender } = getTypes(
         'const test: Set<Set<Set<unknown>>> = new Set<Set<Set<any>>>();',
       );
 
@@ -197,8 +216,20 @@ describe('isUnsafeAssignment', () => {
 
     // https://github.com/typescript-eslint/typescript-eslint/issues/2109
     it('special cases the empty map constructor with no generics', () => {
-      const { sender, senderNode, receiver, checker } = getTypes(
+      const { checker, receiver, sender, senderNode } = getTypes(
         'const test: Map<string, string> = new Map();',
+      );
+
+      expect(
+        isUnsafeAssignment(sender, receiver, checker, senderNode),
+      ).toBeFalsy();
+    });
+
+    it('circular reference', () => {
+      const { checker, receiver, sender, senderNode } = getTypes(
+        `type T = [string, T[]];
+        const test: T = ["string", []] as T;`,
+        1,
       );
 
       expect(

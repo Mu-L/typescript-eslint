@@ -1,0 +1,87 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AST Fixtures special TSTypeParameter class-expr-const-modifier-extends Babel - AST 1`] = `
+Program {
+  type: "Program",
+  body: [
+    ExpressionStatement {
+      type: "ExpressionStatement",
+      expression: ClassExpression {
+        type: "ClassExpression",
+        body: ClassBody {
+          type: "ClassBody",
+          body: [],
+
+          range: [26, 28],
+          loc: {
+            start: { column: 26, line: 1 },
+            end: { column: 28, line: 1 },
+          },
+        },
+        id: null,
+        superClass: null,
+        typeParameters: TSTypeParameterDeclaration {
+          type: "TSTypeParameterDeclaration",
+          params: [
+            TSTypeParameter {
+              type: "TSTypeParameter",
+              const: true,
+              constraint: TSTypeReference {
+                type: "TSTypeReference",
+                typeName: Identifier {
+                  type: "Identifier",
+                  name: "U",
+
+                  range: [23, 24],
+                  loc: {
+                    start: { column: 23, line: 1 },
+                    end: { column: 24, line: 1 },
+                  },
+                },
+
+                range: [23, 24],
+                loc: {
+                  start: { column: 23, line: 1 },
+                  end: { column: 24, line: 1 },
+                },
+              },
+              name: "T",
+
+              range: [7, 24],
+              loc: {
+                start: { column: 7, line: 1 },
+                end: { column: 24, line: 1 },
+              },
+            },
+          ],
+
+          range: [6, 25],
+          loc: {
+            start: { column: 6, line: 1 },
+            end: { column: 25, line: 1 },
+          },
+        },
+
+        range: [1, 28],
+        loc: {
+          start: { column: 1, line: 1 },
+          end: { column: 28, line: 1 },
+        },
+      },
+
+      range: [0, 30],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 30, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 31],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}
+`;

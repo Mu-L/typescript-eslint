@@ -1,39 +1,46 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as tsutils from 'tsutils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
-import * as util from '../util';
+import {
+  createRule,
+  getConstraintInfo,
+  getParserServices,
+  isStrongPrecedenceNode,
+} from '../util';
 
-type MessageIds =
-  | 'direct'
-  | 'negated'
+export type MessageIds =
+  | 'comparingNullableToFalse'
   | 'comparingNullableToTrueDirect'
   | 'comparingNullableToTrueNegated'
-  | 'comparingNullableToFalse';
+  | 'direct'
+  | 'negated'
+  | 'noStrictNullCheck';
 
-type Options = [
+export type Options = [
   {
-    allowComparingNullableBooleansToTrue?: boolean;
     allowComparingNullableBooleansToFalse?: boolean;
+    allowComparingNullableBooleansToTrue?: boolean;
+    allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing?: boolean;
   },
 ];
 
 interface BooleanComparison {
   expression: TSESTree.Expression | TSESTree.PrivateIdentifier;
   literalBooleanInComparison: boolean;
-  forTruthy: boolean;
   negated: boolean;
-  range: [number, number];
 }
 
 interface BooleanComparisonWithTypeInformation extends BooleanComparison {
   expressionIsNullableBoolean: boolean;
 }
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'no-unnecessary-boolean-literal-compare',
   meta: {
+    type: 'suggestion',
     docs: {
       description:
         'Disallow unnecessary equality comparisons against boolean literals',
@@ -42,46 +49,72 @@ export default util.createRule<Options, MessageIds>({
     },
     fixable: 'code',
     messages: {
-      direct:
-        'This expression unnecessarily compares a boolean value to a boolean instead of using it directly.',
-      negated:
-        'This expression unnecessarily compares a boolean value to a boolean instead of negating it.',
+      comparingNullableToFalse:
+        'This expression unnecessarily compares a nullable boolean value to false instead of using the ?? operator to provide a default.',
       comparingNullableToTrueDirect:
         'This expression unnecessarily compares a nullable boolean value to true instead of using it directly.',
       comparingNullableToTrueNegated:
         'This expression unnecessarily compares a nullable boolean value to true instead of negating it.',
-      comparingNullableToFalse:
-        'This expression unnecessarily compares a nullable boolean value to false instead of using the ?? operator to provide a default.',
+      direct:
+        'This expression unnecessarily compares a boolean value to a boolean instead of using it directly.',
+      negated:
+        'This expression unnecessarily compares a boolean value to a boolean instead of negating it.',
+      noStrictNullCheck:
+        'This rule requires the `strictNullChecks` compiler option to be turned on to function correctly.',
     },
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
-          allowComparingNullableBooleansToTrue: {
-            description:
-              'Whether to allow comparisons between nullable boolean variables and `true`.',
-            type: 'boolean',
-          },
           allowComparingNullableBooleansToFalse: {
+            type: 'boolean',
             description:
               'Whether to allow comparisons between nullable boolean variables and `false`.',
+          },
+          allowComparingNullableBooleansToTrue: {
             type: 'boolean',
+            description:
+              'Whether to allow comparisons between nullable boolean variables and `true`.',
+          },
+          allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: {
+            type: 'boolean',
+            description:
+              'Unless this is set to `true`, the rule will error on every file whose `tsconfig.json` does _not_ have the `strictNullChecks` compiler option (or `strict`) set to `true`.',
           },
         },
-        additionalProperties: false,
       },
     ],
-    type: 'suggestion',
   },
   defaultOptions: [
     {
-      allowComparingNullableBooleansToTrue: true,
       allowComparingNullableBooleansToFalse: true,
+      allowComparingNullableBooleansToTrue: true,
+      allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: false,
     },
   ],
   create(context, [options]) {
-    const parserServices = util.getParserServices(context);
-    const checker = parserServices.program.getTypeChecker();
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
+    const compilerOptions = services.program.getCompilerOptions();
+
+    const isStrictNullChecks = tsutils.isStrictCompilerOptionEnabled(
+      compilerOptions,
+      'strictNullChecks',
+    );
+
+    if (
+      !isStrictNullChecks &&
+      options.allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing !== true
+    ) {
+      context.report({
+        loc: {
+          start: { column: 0, line: 0 },
+          end: { column: 0, line: 0 },
+        },
+        messageId: 'noStrictNullCheck',
+      });
+    }
 
     function getBooleanComparison(
       node: TSESTree.BinaryExpression,
@@ -91,18 +124,23 @@ export default util.createRule<Options, MessageIds>({
         return undefined;
       }
 
-      const expressionType = checker.getTypeAtLocation(
-        parserServices.esTreeNodeToTSNodeMap.get(comparison.expression),
+      const { constraintType, isTypeParameter } = getConstraintInfo(
+        checker,
+        services.getTypeAtLocation(comparison.expression),
       );
 
-      if (isBooleanType(expressionType)) {
+      if (isTypeParameter && constraintType == null) {
+        return undefined;
+      }
+
+      if (isBooleanType(constraintType)) {
         return {
           ...comparison,
           expressionIsNullableBoolean: false,
         };
       }
 
-      if (isNullableBoolean(expressionType)) {
+      if (isNullableBoolean(constraintType)) {
         return {
           ...comparison,
           expressionIsNullableBoolean: true,
@@ -181,14 +219,9 @@ export default util.createRule<Options, MessageIds>({
         const negated = !comparisonType.isPositive;
 
         return {
-          literalBooleanInComparison,
-          forTruthy: literalBooleanInComparison ? !negated : negated,
           expression,
+          literalBooleanInComparison,
           negated,
-          range:
-            expression.range[0] < against.range[0]
-              ? [expression.range[1], against.range[1]]
-              : [against.range[0], expression.range[0]],
         };
       }
 
@@ -206,7 +239,7 @@ export default util.createRule<Options, MessageIds>({
     return {
       BinaryExpression(node): void {
         const comparison = getBooleanComparison(node);
-        if (comparison === undefined) {
+        if (comparison == null) {
           return;
         }
 
@@ -226,43 +259,7 @@ export default util.createRule<Options, MessageIds>({
         }
 
         context.report({
-          fix: function* (fixer) {
-            yield fixer.removeRange(comparison.range);
-
-            // if the expression `exp` isn't nullable, or we're comparing to `true`,
-            // we can just replace the entire comparison with `exp` or `!exp`
-            if (
-              !comparison.expressionIsNullableBoolean ||
-              comparison.literalBooleanInComparison
-            ) {
-              if (!comparison.forTruthy) {
-                yield fixer.insertTextBefore(node, '!');
-              }
-              return;
-            }
-
-            // if we're here, then the expression is a nullable boolean and we're
-            // comparing to a literal `false`
-
-            // if we're doing `== false` or `=== false`, then we need to negate the expression
-            if (!comparison.negated) {
-              const { parent } = node;
-              // if the parent is a negation, we can instead just get rid of the parent's negation.
-              // i.e. instead of resulting in `!(!(exp))`, we can just result in `exp`
-              if (parent != null && nodeIsUnaryNegation(parent)) {
-                // remove from the beginning of the parent to the beginning of this node
-                yield fixer.removeRange([parent.range[0], node.range[0]]);
-                // remove from the end of the node to the end of the parent
-                yield fixer.removeRange([node.range[1], parent.range[1]]);
-              } else {
-                yield fixer.insertTextBefore(node, '!');
-              }
-            }
-
-            // provide the default `true`
-            yield fixer.insertTextBefore(node, '(');
-            yield fixer.insertTextAfter(node, ' ?? true)');
-          },
+          node,
           messageId: comparison.expressionIsNullableBoolean
             ? comparison.literalBooleanInComparison
               ? comparison.negated
@@ -270,9 +267,46 @@ export default util.createRule<Options, MessageIds>({
                 : 'comparingNullableToTrueDirect'
               : 'comparingNullableToFalse'
             : comparison.negated
-            ? 'negated'
-            : 'direct',
-          node,
+              ? 'negated'
+              : 'direct',
+          *fix(fixer) {
+            // 1. isUnaryNegation - parent negation
+            // 2. literalBooleanInComparison - is compared to literal boolean
+            // 3. negated - is expression negated
+
+            const isUnaryNegation = nodeIsUnaryNegation(node.parent);
+
+            const shouldNegate =
+              comparison.negated !== comparison.literalBooleanInComparison;
+
+            const mutatedNode = isUnaryNegation ? node.parent : node;
+
+            yield fixer.replaceText(
+              mutatedNode,
+              context.sourceCode.getText(comparison.expression),
+            );
+
+            // if `isUnaryNegation === literalBooleanInComparison === !negated` is true - negate the expression
+            if (shouldNegate === isUnaryNegation) {
+              yield fixer.insertTextBefore(mutatedNode, '!');
+
+              // if the expression `exp` is not a strong precedence node, wrap it in parentheses
+              if (!isStrongPrecedenceNode(comparison.expression)) {
+                yield fixer.insertTextBefore(mutatedNode, '(');
+                yield fixer.insertTextAfter(mutatedNode, ')');
+              }
+            }
+
+            // if the expression `exp` is nullable, and we're not comparing to `true`, insert `?? true`
+            if (
+              comparison.expressionIsNullableBoolean &&
+              !comparison.literalBooleanInComparison
+            ) {
+              // provide the default `true`
+              yield fixer.insertTextBefore(mutatedNode, '(');
+              yield fixer.insertTextAfter(mutatedNode, ' ?? true)');
+            }
+          },
         });
       },
     };
@@ -286,18 +320,6 @@ interface EqualsKind {
 
 function getEqualsKind(operator: string): EqualsKind | undefined {
   switch (operator) {
-    case '==':
-      return {
-        isPositive: true,
-        isStrict: false,
-      };
-
-    case '===':
-      return {
-        isPositive: true,
-        isStrict: true,
-      };
-
     case '!=':
       return {
         isPositive: false,
@@ -307,6 +329,18 @@ function getEqualsKind(operator: string): EqualsKind | undefined {
     case '!==':
       return {
         isPositive: false,
+        isStrict: true,
+      };
+
+    case '==':
+      return {
+        isPositive: true,
+        isStrict: false,
+      };
+
+    case '===':
+      return {
+        isPositive: true,
         isStrict: true,
       };
 

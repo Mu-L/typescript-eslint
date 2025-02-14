@@ -1,6 +1,13 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import {
+  createRule,
+  getConstrainedTypeAtLocation,
+  getParserServices,
+  getTypeName,
+  isStaticMemberAccessOfValue,
+  isTypeArrayTypeOrUnionOfArrayTypes,
+} from '../util';
 
 export type Options = [
   {
@@ -9,20 +16,13 @@ export type Options = [
 ];
 export type MessageIds = 'requireCompare';
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'require-array-sort-compare',
-  defaultOptions: [
-    {
-      ignoreStringArrays: false,
-    },
-  ],
-
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Require `Array#sort` calls to always provide a `compareFunction`',
-      recommended: false,
+        'Require `Array#sort` and `Array#toSorted` calls to always provide a `compareFunction`',
       requiresTypeChecking: true,
     },
     messages: {
@@ -31,56 +31,62 @@ export default util.createRule<Options, MessageIds>({
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
           ignoreStringArrays: {
+            type: 'boolean',
             description:
               'Whether to ignore arrays in which all elements are strings.',
-            type: 'boolean',
           },
         },
       },
     ],
   },
 
+  defaultOptions: [
+    {
+      ignoreStringArrays: true,
+    },
+  ],
+
   create(context, [options]) {
-    const service = util.getParserServices(context);
-    const checker = service.program.getTypeChecker();
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
 
     /**
      * Check if a given node is an array which all elements are string.
-     * @param node
      */
-    function isStringArrayNode(node: TSESTree.LeftHandSideExpression): boolean {
-      const type = checker.getTypeAtLocation(
-        service.esTreeNodeToTSNodeMap.get(node),
-      );
+    function isStringArrayNode(node: TSESTree.Expression): boolean {
+      const type = services.getTypeAtLocation(node);
+
       if (checker.isArrayType(type) || checker.isTupleType(type)) {
         const typeArgs = checker.getTypeArguments(type);
-        return typeArgs.every(
-          arg => util.getTypeName(checker, arg) === 'string',
-        );
+        return typeArgs.every(arg => getTypeName(checker, arg) === 'string');
       }
       return false;
     }
 
+    function checkSortArgument(callee: TSESTree.MemberExpression): void {
+      if (!isStaticMemberAccessOfValue(callee, context, 'sort', 'toSorted')) {
+        return;
+      }
+      const calleeObjType = getConstrainedTypeAtLocation(
+        services,
+        callee.object,
+      );
+
+      if (options.ignoreStringArrays && isStringArrayNode(callee.object)) {
+        return;
+      }
+
+      if (isTypeArrayTypeOrUnionOfArrayTypes(calleeObjType, checker)) {
+        context.report({ node: callee.parent, messageId: 'requireCompare' });
+      }
+    }
+
     return {
-      "CallExpression[arguments.length=0] > MemberExpression[property.name='sort'][computed=false]"(
-        callee: TSESTree.MemberExpression,
-      ): void {
-        const tsNode = service.esTreeNodeToTSNodeMap.get(callee.object);
-        const calleeObjType = util.getConstrainedTypeAtLocation(
-          checker,
-          tsNode,
-        );
-
-        if (options.ignoreStringArrays && isStringArrayNode(callee.object)) {
-          return;
-        }
-
-        if (util.isTypeArrayTypeOrUnionOfArrayTypes(calleeObjType, checker)) {
-          context.report({ node: callee.parent!, messageId: 'requireCompare' });
-        }
-      },
+      'CallExpression[arguments.length=0] > MemberExpression':
+        checkSortArgument,
     };
   },
 });

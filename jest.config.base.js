@@ -1,5 +1,8 @@
 'use strict';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path = require('node:path');
+
 // @ts-check
 /** @type {import('@jest/types').Config.InitialOptions} */
 module.exports = {
@@ -11,6 +14,7 @@ module.exports = {
     'tsx',
     'mts',
     'mtsx',
+    'cjs',
     'js',
     'jsx',
     'mjs',
@@ -18,8 +22,9 @@ module.exports = {
     'json',
     'node',
   ],
-  resolver: '<rootDir>/../../tests/jest-resolver.js',
-  setupFilesAfterEnv: ['console-fail-test/setup.js'],
+  setupFilesAfterEnv: [
+    path.join(__dirname, 'node_modules/console-fail-test/setup.cjs'),
+  ],
   testRegex: ['./tests/.+\\.test\\.ts$', './tests/.+\\.spec\\.ts$'],
   transform: {
     '^.+\\.(t|j)sx?$': [
@@ -36,4 +41,5 @@ module.exports = {
       },
     ],
   },
+  workerIdleMemoryLimit: '300MB',
 };

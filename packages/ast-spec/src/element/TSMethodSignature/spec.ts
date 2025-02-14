@@ -12,27 +12,26 @@ import type {
 
 interface TSMethodSignatureBase extends BaseNode {
   type: AST_NODE_TYPES.TSMethodSignature;
-  key: PropertyName;
+  accessibility: Accessibility | undefined;
   computed: boolean;
-  params: Parameter[];
-  optional?: boolean;
-  returnType?: TSTypeAnnotation;
-  readonly?: boolean;
-  typeParameters?: TSTypeParameterDeclaration;
-  accessibility?: Accessibility;
-  export?: boolean;
-  static?: boolean;
+  key: PropertyName;
   kind: 'get' | 'method' | 'set';
+  optional: boolean;
+  params: Parameter[];
+  readonly: boolean;
+  returnType: TSTypeAnnotation | undefined;
+  static: boolean;
+  typeParameters: TSTypeParameterDeclaration | undefined;
 }
 
 export interface TSMethodSignatureComputedName extends TSMethodSignatureBase {
-  key: PropertyNameComputed;
   computed: true;
+  key: PropertyNameComputed;
 }
 export interface TSMethodSignatureNonComputedName
   extends TSMethodSignatureBase {
-  key: PropertyNameNonComputed;
   computed: false;
+  key: PropertyNameNonComputed;
 }
 
 export type TSMethodSignature =

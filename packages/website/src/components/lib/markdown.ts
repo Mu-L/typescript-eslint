@@ -1,10 +1,11 @@
-import { parseESLintRC } from '../config/utils';
 import type { ConfigModel } from '../types';
 
-export function createSummary(
+import { parseESLintRC } from './parseConfig';
+
+function createSummary(
   value: string,
   title: string,
-  type: 'ts' | 'json',
+  type: 'json' | 'ts',
   length: number,
 ): string {
   const code = `### ${title}\n\n\`\`\`${type}\n${value}\n\`\`\``;
@@ -14,41 +15,43 @@ export function createSummary(
   return code;
 }
 
-function createSummaryJson(
-  obj: ConfigModel['tsconfig'] | ConfigModel['eslintrc'],
-  field: string,
-  title: string,
-): string {
-  if (obj && Object.keys(obj).length > 0) {
+function createSummaryJson(obj: string, field: string, title: string): string {
+  if (obj && obj.length > 0) {
     return createSummary(obj, title, 'json', 10);
   }
   return '';
 }
 
-export function genVersions(state: ConfigModel): string {
+function generateVersionsTable(tsVersion: string): string {
   return [
     '| package | version |',
     '| -- | -- |',
     `| \`@typescript-eslint/eslint-plugin\` | \`${process.env.TS_ESLINT_VERSION}\` |`,
     `| \`@typescript-eslint/parser\` | \`${process.env.TS_ESLINT_VERSION}\` |`,
-    `| \`TypeScript\` | \`${state.ts}\` |`,
+    `| \`TypeScript\` | \`${tsVersion}\` |`,
     `| \`ESLint\` | \`${process.env.ESLINT_VERSION}\` |`,
     `| \`node\` | \`web\` |`,
   ].join('\n');
 }
 
+/**
+ * Create a markdown string that user can copy and paste into an issue
+ */
 export function createMarkdown(state: ConfigModel): string {
   return [
     `[Playground](${document.location.toString()})`,
     createSummary(state.code, 'Code', 'ts', 30),
     createSummaryJson(state.eslintrc, 'rules', 'Eslint config'),
     createSummaryJson(state.tsconfig, 'compilerOptions', 'TypeScript config'),
-    genVersions(state),
+    generateVersionsTable(state.ts),
   ]
     .filter(Boolean)
     .join('\n\n');
 }
 
+/**
+ * Create a URLSearchParams string for the issue template
+ */
 export function createMarkdownParams(state: ConfigModel): string {
   const { rules } = parseESLintRC(state.eslintrc);
   const ruleKeys = Object.keys(rules);
@@ -59,14 +62,14 @@ export function createMarkdownParams(state: ConfigModel): string {
       : 'rule name here';
 
   const params = {
+    'eslint-config': `module.exports = ${state.eslintrc}`,
     labels: 'bug,package: eslint-plugin,triage',
-    template: '01-bug-report-plugin.yaml',
-    title: `Bug: [${onlyRuleName}] <short description of the issue>`,
     'playground-link': document.location.toString(),
     'repro-code': state.code,
-    'eslint-config': `module.exports = ${state.eslintrc ?? '{}'}`,
-    'typescript-config': state.tsconfig ?? '{}',
-    versions: genVersions(state),
+    template: '01-bug-report-plugin.yaml',
+    title: `Bug: [${onlyRuleName}] <short description of the issue>`,
+    'typescript-config': state.tsconfig,
+    versions: generateVersionsTable(state.ts),
   };
 
   return new URLSearchParams(params).toString();
