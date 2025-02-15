@@ -8,12 +8,12 @@ export interface TSTypeAliasDeclaration extends BaseNode {
   type: AST_NODE_TYPES.TSTypeAliasDeclaration;
   /**
    * Whether the type was `declare`d.
-   * ```
+   * @example
+   * ```ts
    * declare type T = 1;
    * ```
    */
-  // TODO(#5020) - make this `false` if it is not `declare`d
-  declare?: boolean;
+  declare: boolean;
   /**
    * The name of the type.
    */
@@ -23,8 +23,8 @@ export interface TSTypeAliasDeclaration extends BaseNode {
    */
   typeAnnotation: TypeNode;
   /**
-   * The generic type parameters declared for the type.
-   * This is `undefined` if there are no generic type parameters declared.
+   * The generic type parameters declared for the type. Empty declaration
+   * (`<>`) is different from no declaration.
    */
-  typeParameters?: TSTypeParameterDeclaration;
+  typeParameters: TSTypeParameterDeclaration | undefined;
 }

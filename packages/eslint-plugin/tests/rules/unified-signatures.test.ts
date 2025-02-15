@@ -1,11 +1,12 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/unified-signatures';
-import { RuleTester } from '../RuleTester';
 
 //------------------------------------------------------------------------------
 // Tests
 //------------------------------------------------------------------------------
 
-const ruleTester = new RuleTester({ parser: '@typescript-eslint/parser' });
+const ruleTester = new RuleTester();
 
 ruleTester.run('unified-signatures', rule, {
   valid: [
@@ -169,6 +170,36 @@ function f(a: number | string): void {}
     },
     {
       code: `
+function f(m: number): void;
+function f(v: number, u: string): void;
+function f(v: number, u?: string): void {}
+      `,
+      options: [{ ignoreDifferentlyNamedParameters: true }],
+    },
+    {
+      code: `
+function f(v: boolean): number;
+function f(): string;
+      `,
+      options: [{ ignoreDifferentlyNamedParameters: true }],
+    },
+    {
+      code: `
+function f(v: boolean, u: boolean): number;
+function f(v: boolean): string;
+      `,
+      options: [{ ignoreDifferentlyNamedParameters: true }],
+    },
+    {
+      code: `
+function f(v: number, u?: string): void {}
+function f(v: number): void;
+function f(): string;
+      `,
+      options: [{ ignoreDifferentlyNamedParameters: true }],
+    },
+    {
+      code: `
 function f(a: boolean, ...c: number[]): void;
 function f(a: boolean, ...d: string[]): void;
 function f(a: boolean, ...c: (number | string)[]): void {}
@@ -199,7 +230,7 @@ function f(a: number | string): void {}
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 12,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -207,7 +238,7 @@ function f(a: number | string): void {}
             type2: 'string',
           },
           line: 3,
-          column: 12,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -221,7 +252,7 @@ function f(x: any): any {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 12,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -229,7 +260,7 @@ function f(x: any): any {
             type2: 'string',
           },
           line: 3,
-          column: 12,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -243,7 +274,7 @@ function f(x: any): any {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 12,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -251,7 +282,7 @@ function f(x: any): any {
             type2: 'string',
           },
           line: 3,
-          column: 12,
+          messageId: 'singleParameterDifference',
         },
       ],
       options: [{ ignoreDifferentlyNamedParameters: true }],
@@ -264,13 +295,13 @@ function opt(...args: any[]) {}
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 28,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 3,
-          column: 28,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -285,13 +316,13 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 6,
           data: {
             failureStringStart:
               'This overload and the one on line 3 can be combined into one signature',
           },
           line: 5,
-          column: 6,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -306,13 +337,13 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 6,
           data: {
             failureStringStart:
               'This overload and the one on line 3 can be combined into one signature',
           },
           line: 5,
-          column: 6,
+          messageId: 'omittingSingleParameter',
         },
       ],
       options: [{ ignoreDifferentlyNamedParameters: true }],
@@ -327,13 +358,13 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 6,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 4,
-          column: 6,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -347,13 +378,13 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'omittingRestParameter',
+          column: 29,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 4,
-          column: 29,
+          messageId: 'omittingRestParameter',
         },
       ],
     },
@@ -367,13 +398,13 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'omittingRestParameter',
+          column: 5,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 4,
-          column: 5,
+          messageId: 'omittingRestParameter',
         },
       ],
     },
@@ -387,13 +418,13 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 5,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 4,
-          column: 5,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -407,7 +438,7 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 6,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -415,7 +446,7 @@ interface I {
             type2: 'string',
           },
           line: 4,
-          column: 6,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -429,7 +460,7 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 5,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -437,7 +468,7 @@ interface I {
             type2: 'string',
           },
           line: 4,
-          column: 5,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -451,13 +482,13 @@ type T = {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 4,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 4,
-          column: 4,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -471,13 +502,13 @@ declare class C {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 15,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 4,
-          column: 15,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -491,7 +522,7 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 5,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -499,7 +530,7 @@ interface I {
             type2: 'string | boolean',
           },
           line: 4,
-          column: 5,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -513,7 +544,7 @@ interface I {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 5,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -521,7 +552,7 @@ interface I {
             type2: '[string, boolean]',
           },
           line: 4,
-          column: 5,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -534,7 +565,7 @@ interface Generic<T> {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 5,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -542,7 +573,7 @@ interface Generic<T> {
             type2: 'T',
           },
           line: 4,
-          column: 5,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -554,7 +585,7 @@ function f<T>(x: T): void;
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 15,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -562,7 +593,7 @@ function f<T>(x: T): void;
             type2: 'T',
           },
           line: 3,
-          column: 15,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -574,7 +605,7 @@ function f<T extends number>(x: T): void;
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 30,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -582,7 +613,7 @@ function f<T extends number>(x: T): void;
             type2: 'T',
           },
           line: 3,
-          column: 30,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -596,7 +627,7 @@ abstract class Foo {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 21,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -604,7 +635,7 @@ abstract class Foo {
             type2: 'string',
           },
           line: 4,
-          column: 21,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -618,7 +649,7 @@ interface Foo {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 7,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -626,7 +657,7 @@ interface Foo {
             type2: 'number',
           },
           line: 4,
-          column: 7,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -640,7 +671,7 @@ interface Foo {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 8,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -648,7 +679,7 @@ interface Foo {
             type2: 'number',
           },
           line: 4,
-          column: 8,
+          messageId: 'singleParameterDifference',
         },
       ],
     },
@@ -666,7 +697,7 @@ interface IFoo {
       `,
       errors: [
         {
-          messageId: 'singleParameterDifference',
+          column: 15,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
@@ -674,69 +705,7 @@ interface IFoo {
             type2: 'number',
           },
           line: 8,
-          column: 15,
-        },
-      ],
-    },
-    {
-      // Works with parameter properties. Note that this is invalid TypeScript syntax.
-      code: `
-class Foo {
-  constructor(readonly x: number);
-  constructor(readonly x: string);
-}
-      `,
-      errors: [
-        {
           messageId: 'singleParameterDifference',
-          data: {
-            failureStringStart:
-              'These overloads can be combined into one signature',
-            type1: 'number',
-            type2: 'string',
-          },
-          line: 4,
-          column: 15,
-        },
-      ],
-    },
-    {
-      // Works with parameter properties. Note that this is invalid TypeScript syntax.
-      code: `
-class Foo {
-  constructor(readonly x: number);
-  constructor(readonly x: number, readonly y: string);
-}
-      `,
-      errors: [
-        {
-          messageId: 'omittingSingleParameter',
-          data: {
-            failureStringStart:
-              'These overloads can be combined into one signature',
-          },
-          line: 4,
-          column: 35,
-        },
-      ],
-    },
-    {
-      // Works with parameter properties. Note that this is invalid TypeScript syntax.
-      code: `
-class Foo {
-  constructor(readonly x: number);
-  constructor(readonly x: number, readonly y?: string, readonly z?: string);
-}
-      `,
-      errors: [
-        {
-          messageId: 'omittingSingleParameter',
-          data: {
-            failureStringStart:
-              'These overloads can be combined into one signature',
-          },
-          line: 4,
-          column: 56,
         },
       ],
     },
@@ -747,13 +716,13 @@ export function foo(line: number, character?: number): number;
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 35,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 3,
-          column: 35,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -764,13 +733,13 @@ export function foo(line: number, character?: number): number;
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
+          column: 35,
           data: {
             failureStringStart:
               'These overloads can be combined into one signature',
           },
           line: 3,
-          column: 35,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -783,9 +752,9 @@ declare module 'foo' {
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
-          line: 4,
           column: 41,
+          line: 4,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },
@@ -796,9 +765,9 @@ export default function (foo: number, bar?: string): string[];
       `,
       errors: [
         {
-          messageId: 'omittingSingleParameter',
-          line: 3,
           column: 39,
+          line: 3,
+          messageId: 'omittingSingleParameter',
         },
       ],
     },

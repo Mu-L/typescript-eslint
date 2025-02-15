@@ -1,15 +1,15 @@
 import React, { useCallback } from 'react';
 
 export interface CheckboxProps {
-  readonly name: string;
-  readonly value?: string;
-  readonly onChange: (checked: boolean, value: string) => void;
-  readonly indeterminate?: boolean;
   readonly checked: boolean | undefined;
   readonly className?: string;
+  readonly indeterminate?: boolean;
+  readonly name: string;
+  readonly onChange: (checked: boolean, value: string) => void;
+  readonly value?: string;
 }
 
-function Checkbox(props: CheckboxProps): JSX.Element {
+function Checkbox(props: CheckboxProps): React.JSX.Element {
   const { indeterminate } = props;
 
   const checkboxRef = useCallback(
@@ -25,14 +25,14 @@ function Checkbox(props: CheckboxProps): JSX.Element {
 
   return (
     <input
-      ref={checkboxRef}
+      checked={props.checked && !props.indeterminate}
       className={props.className}
       name={props.name}
-      checked={props.checked && !props.indeterminate}
-      type="checkbox"
       onChange={(e): void =>
         props.onChange(e.target.checked, props.value ?? '')
       }
+      ref={checkboxRef}
+      type="checkbox"
     />
   );
 }

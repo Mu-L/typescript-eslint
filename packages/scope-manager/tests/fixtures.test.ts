@@ -1,10 +1,11 @@
-import fs from 'fs';
-import glob from 'glob';
+import * as glob from 'glob';
 import makeDir from 'make-dir';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
-import type { AnalyzeOptions } from './util';
-import { parseAndAnalyze } from './util';
+import type { AnalyzeOptions } from './test-utils';
+
+import { parseAndAnalyze } from './test-utils';
 
 // Assign a segment set to this variable to limit the test to only this segment
 // This is super helpful if you need to debug why a specific fixture isn't producing the correct output
@@ -16,43 +17,41 @@ const FIXTURES_DIR = path.resolve(__dirname, 'fixtures');
 
 const fixtures = glob
   .sync('**/*.{js,ts,jsx,tsx}', {
-    cwd: FIXTURES_DIR,
     absolute: true,
+    cwd: FIXTURES_DIR,
     ignore: ['fixtures.test.ts'],
   })
   .map(absolute => {
     const relative = path.relative(FIXTURES_DIR, absolute);
-    const { name, dir, ext } = path.parse(relative);
+    const { dir, ext, name } = path.parse(relative);
     const segments = dir.split(path.sep);
     const snapshotPath = path.join(FIXTURES_DIR, dir);
     return {
       absolute,
-      name,
       ext,
+      name,
       segments,
-      snapshotPath,
       snapshotFile: path.join(snapshotPath, `${name}${ext}.shot`),
+      snapshotPath,
     };
   });
 
-const FOUR_SLASH = /^\/\/\/\/[ ]+@(\w+)[ ]*=[ ]*(.+)$/;
+const FOUR_SLASH = /^\/{4} +@(\w+) *= *(.+)$/;
 const QUOTED_STRING = /^["'](.+?)['"]$/;
-type ALLOWED_VALUE = ['number' | 'boolean' | 'string', Set<unknown>?];
+type ALLOWED_VALUE = ['boolean' | 'number' | 'string', Set<unknown>?];
 const ALLOWED_OPTIONS: Map<string, ALLOWED_VALUE> = new Map<
   keyof AnalyzeOptions,
   ALLOWED_VALUE
 >([
-  ['ecmaVersion', ['number']],
   ['globalReturn', ['boolean']],
   ['impliedStrict', ['boolean']],
-  ['jsxPragma', ['string']],
   ['jsxFragmentName', ['string']],
+  ['jsxPragma', ['string']],
   ['sourceType', ['string', new Set(['module', 'script'])]],
-  ['emitDecoratorMetadata', ['boolean']],
 ]);
 
 function nestDescribe(
-  fixture: typeof fixtures[number],
+  fixture: (typeof fixtures)[number],
   segments = fixture.segments,
 ): void {
   if (segments.length > 0) {
@@ -126,7 +125,7 @@ function nestDescribe(
 
         if (type[1] && !type[1].has(value)) {
           throw new Error(
-            `Expected value for ${key} to be one of (${Array.from(type[1]).join(
+            `Expected value for ${key} to be one of (${[...type[1]].join(
               ' | ',
             )}), but got ${value as string}`,
           );
@@ -179,10 +178,10 @@ if (ONLY === '') {
   // ensure that the snapshots are cleaned up, because jest-specific-snapshot won't do this check
   const snapshots = glob.sync(`${FIXTURES_DIR}/**/*.shot`).map(absolute => {
     const relative = path.relative(FIXTURES_DIR, absolute);
-    const { name, dir } = path.parse(relative);
+    const { dir, name } = path.parse(relative);
     return {
-      relative,
       fixturePath: path.join(FIXTURES_DIR, dir, name),
+      relative,
     };
   });
 

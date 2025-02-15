@@ -1,9 +1,10 @@
 import type { TSESTree } from '@typescript-eslint/types';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import { simpleTraverse } from '@typescript-eslint/typescript-estree';
 
 import { analyze } from '../../src/analyze';
-import { parse } from '../util/parse';
+import { parse } from '../test-utils/parse';
 
 describe('ScopeManager.prototype.getDeclaredVariables', () => {
   function verify(
@@ -12,23 +13,24 @@ describe('ScopeManager.prototype.getDeclaredVariables', () => {
     expectedNamesList: string[][],
   ): void {
     const scopeManager = analyze(ast, {
-      ecmaVersion: 6,
       sourceType: 'module',
     });
 
     simpleTraverse(ast, {
-      [type](node) {
-        const expected = expectedNamesList.shift()!;
-        const actual = scopeManager.getDeclaredVariables(node);
+      visitors: {
+        [type](node) {
+          const expected = expectedNamesList.shift()!;
+          const actual = scopeManager.getDeclaredVariables(node);
 
-        expect(actual).toHaveLength(expected.length);
-        if (actual.length > 0) {
-          const end = actual.length - 1;
+          expect(actual).toHaveLength(expected.length);
+          if (actual.length > 0) {
+            const end = actual.length - 1;
 
-          for (let i = 0; i <= end; i++) {
-            expect(actual[i].name).toBe(expected[i]);
+            for (let i = 0; i <= end; i++) {
+              expect(actual[i].name).toBe(expected[i]);
+            }
           }
-        }
+        },
       },
     });
 

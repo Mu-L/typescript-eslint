@@ -1,9 +1,8 @@
-import rule from '../../src/rules/no-loss-of-precision';
-import { RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/no-loss-of-precision';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-loss-of-precision', rule, {
   valid: [

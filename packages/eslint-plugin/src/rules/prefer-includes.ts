@@ -1,7 +1,7 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+
+import { parseRegExpLiteral } from '@eslint-community/regexpp';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import type { AST as RegExpAST } from 'regexpp';
-import { parseRegExpLiteral } from 'regexpp';
 import * as ts from 'typescript';
 
 import {
@@ -9,17 +9,16 @@ import {
   getConstrainedTypeAtLocation,
   getParserServices,
   getStaticValue,
+  isStaticMemberAccessOfValue,
 } from '../util';
 
 export default createRule({
   name: 'prefer-includes',
-  defaultOptions: [],
-
   meta: {
     type: 'suggestion',
     docs: {
       description: 'Enforce `includes` method over `indexOf` method',
-      recommended: 'strict',
+      recommended: 'stylistic',
       requiresTypeChecking: true,
     },
     fixable: 'code',
@@ -31,14 +30,16 @@ export default createRule({
     schema: [],
   },
 
+  defaultOptions: [],
+
   create(context) {
-    const globalScope = context.getScope();
+    const globalScope = context.sourceCode.getScope(context.sourceCode.ast);
     const services = getParserServices(context);
-    const types = services.program.getTypeChecker();
+    const checker = services.program.getTypeChecker();
 
     function isNumber(node: TSESTree.Node, value: number): boolean {
       const evaluated = getStaticValue(node, globalScope);
-      return evaluated !== null && evaluated.value === value;
+      return evaluated != null && evaluated.value === value;
     }
 
     function isPositiveCheck(node: TSESTree.BinaryExpression): boolean {
@@ -103,7 +104,7 @@ export default createRule({
         return null;
       }
 
-      const { pattern, flags } = parseRegExpLiteral(evaluated.value);
+      const { flags, pattern } = parseRegExpLiteral(evaluated.value);
       if (
         pattern.alternatives.length !== 1 ||
         flags.ignoreCase ||
@@ -119,8 +120,27 @@ export default createRule({
       }
 
       // To string.
-      return String.fromCodePoint(
-        ...chars.map(c => (c as RegExpAST.Character).value),
+      return String.fromCodePoint(...chars.map(c => c.value));
+    }
+
+    function escapeString(str: string): string {
+      const EscapeMap = {
+        '\0': '\\0',
+        '\t': '\\t',
+        '\n': '\\n',
+        '\v': '\\v',
+        '\f': '\\f',
+        '\r': '\\r',
+        "'": "\\'",
+        '\\': '\\\\',
+        // "\b" cause unexpected replacements
+        // '\b': '\\b',
+      };
+      const replaceRegex = new RegExp(Object.values(EscapeMap).join('|'), 'g');
+
+      return str.replaceAll(
+        replaceRegex,
+        char => EscapeMap[char as keyof typeof EscapeMap],
       );
     }
 
@@ -128,10 +148,13 @@ export default createRule({
       node: TSESTree.MemberExpression,
       allowFixing: boolean,
     ): void {
+      if (!isStaticMemberAccessOfValue(node, context, 'indexOf')) {
+        return;
+      }
       // Check if the comparison is equivalent to `includes()`.
       const callNode = node.parent as TSESTree.CallExpression;
       const compareNode = (
-        callNode.parent?.type === AST_NODE_TYPES.ChainExpression
+        callNode.parent.type === AST_NODE_TYPES.ChainExpression
           ? callNode.parent.parent
           : callNode.parent
       ) as TSESTree.BinaryExpression;
@@ -141,9 +164,8 @@ export default createRule({
       }
 
       // Get the symbol of `indexOf` method.
-      const tsNode = services.esTreeNodeToTSNodeMap.get(node.property);
-      const indexofMethodDeclarations = types
-        .getSymbolAtLocation(tsNode)
+      const indexofMethodDeclarations = services
+        .getSymbolAtLocation(node.property)
         ?.getDeclarations();
       if (
         indexofMethodDeclarations == null ||
@@ -156,13 +178,12 @@ export default createRule({
       // and the two methods have the same parameters.
       for (const instanceofMethodDecl of indexofMethodDeclarations) {
         const typeDecl = instanceofMethodDecl.parent;
-        const type = types.getTypeAtLocation(typeDecl);
+        const type = checker.getTypeAtLocation(typeDecl);
         const includesMethodDecl = type
           .getProperty('includes')
           ?.getDeclarations();
         if (
-          includesMethodDecl == null ||
-          !includesMethodDecl.some(includesMethodDecl =>
+          !includesMethodDecl?.some(includesMethodDecl =>
             hasSameParameters(includesMethodDecl, instanceofMethodDecl),
           )
         ) {
@@ -188,34 +209,32 @@ export default createRule({
 
     return {
       // a.indexOf(b) !== 1
-      "BinaryExpression > CallExpression.left > MemberExpression.callee[property.name='indexOf'][computed=false]"(
+      'BinaryExpression > CallExpression.left > MemberExpression'(
         node: TSESTree.MemberExpression,
       ): void {
         checkArrayIndexOf(node, /* allowFixing */ true);
       },
 
       // a?.indexOf(b) !== 1
-      "BinaryExpression > ChainExpression.left > CallExpression > MemberExpression.callee[property.name='indexOf'][computed=false]"(
+      'BinaryExpression > ChainExpression.left > CallExpression > MemberExpression'(
         node: TSESTree.MemberExpression,
       ): void {
         checkArrayIndexOf(node, /* allowFixing */ false);
       },
 
       // /bar/.test(foo)
-      'CallExpression > MemberExpression.callee[property.name="test"][computed=false]'(
-        node: TSESTree.MemberExpression,
+      'CallExpression[arguments.length=1] > MemberExpression.callee[property.name="test"][computed=false]'(
+        node: { parent: TSESTree.CallExpression } & TSESTree.MemberExpression,
       ): void {
-        const callNode = node.parent as TSESTree.CallExpression;
-        const text =
-          callNode.arguments.length === 1 ? parseRegExp(node.object) : null;
+        const callNode = node.parent;
+        const text = parseRegExp(node.object);
         if (text == null) {
           return;
         }
 
         //check the argument type of test methods
         const argument = callNode.arguments[0];
-        const tsNode = services.esTreeNodeToTSNodeMap.get(argument);
-        const type = getConstrainedTypeAtLocation(types, tsNode);
+        const type = getConstrainedTypeAtLocation(services, argument);
 
         const includesMethodDecl = type
           .getProperty('includes')
@@ -237,13 +256,14 @@ export default createRule({
               argNode.type !== AST_NODE_TYPES.CallExpression;
 
             yield fixer.removeRange([callNode.range[0], argNode.range[0]]);
+            yield fixer.removeRange([argNode.range[1], callNode.range[1]]);
             if (needsParen) {
               yield fixer.insertTextBefore(argNode, '(');
               yield fixer.insertTextAfter(argNode, ')');
             }
             yield fixer.insertTextAfter(
               argNode,
-              `${node.optional ? '?.' : '.'}includes('${text}'`,
+              `${node.optional ? '?.' : '.'}includes('${escapeString(text)}')`,
             );
           },
         });

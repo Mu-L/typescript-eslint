@@ -1,23 +1,24 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule, isDefinitionFile } from '../util';
 
-type Options = [
+export type Options = [
   {
     allowDeclarations?: boolean;
     allowDefinitionFiles?: boolean;
   },
 ];
-type MessageIds = 'moduleSyntaxIsPreferred';
+export type MessageIds = 'moduleSyntaxIsPreferred';
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'no-namespace',
   meta: {
     type: 'suggestion',
     docs: {
       description: 'Disallow TypeScript namespaces',
-      recommended: 'error',
+      recommended: 'recommended',
     },
     messages: {
       moduleSyntaxIsPreferred:
@@ -26,19 +27,19 @@ export default util.createRule<Options, MessageIds>({
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
           allowDeclarations: {
+            type: 'boolean',
             description:
               'Whether to allow `declare` with custom TypeScript namespaces.',
-            type: 'boolean',
           },
           allowDefinitionFiles: {
+            type: 'boolean',
             description:
               'Whether to allow `declare` with custom TypeScript namespaces inside definition files.',
-            type: 'boolean',
           },
         },
-        additionalProperties: false,
       },
     ],
   },
@@ -49,13 +50,8 @@ export default util.createRule<Options, MessageIds>({
     },
   ],
   create(context, [{ allowDeclarations, allowDefinitionFiles }]) {
-    const filename = context.getFilename();
-
     function isDeclaration(node: TSESTree.Node): boolean {
-      if (
-        node.type === AST_NODE_TYPES.TSModuleDeclaration &&
-        node.declare === true
-      ) {
+      if (node.type === AST_NODE_TYPES.TSModuleDeclaration && node.declare) {
         return true;
       }
 
@@ -63,13 +59,12 @@ export default util.createRule<Options, MessageIds>({
     }
 
     return {
-      "TSModuleDeclaration[global!=true][id.type='Identifier']"(
+      "TSModuleDeclaration[global!=true][id.type!='Literal']"(
         node: TSESTree.TSModuleDeclaration,
       ): void {
         if (
-          (node.parent &&
-            node.parent.type === AST_NODE_TYPES.TSModuleDeclaration) ||
-          (allowDefinitionFiles && util.isDefinitionFile(filename)) ||
+          node.parent.type === AST_NODE_TYPES.TSModuleDeclaration ||
+          (allowDefinitionFiles && isDefinitionFile(context.filename)) ||
           (allowDeclarations && isDeclaration(node))
         ) {
           return;

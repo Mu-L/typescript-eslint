@@ -1,9 +1,12 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import type * as ts from 'typescript';
 
-import * as util from '../../util';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+
 import type { SelectorsString } from './enums';
+import type { Context, NormalizedSelector } from './types';
+
+import { getParserServices } from '../../util';
 import {
   MetaSelectors,
   Modifiers,
@@ -18,14 +21,13 @@ import {
   isMethodOrPropertySelector,
   selectorTypeToMessageString,
 } from './shared';
-import type { Context, NormalizedSelector } from './types';
 
-function createValidator(
+export function createValidator(
   type: SelectorsString,
   context: Context,
   allConfigs: NormalizedSelector[],
 ): (
-  node: TSESTree.Identifier | TSESTree.PrivateIdentifier | TSESTree.Literal,
+  node: TSESTree.Identifier | TSESTree.Literal | TSESTree.PrivateIdentifier,
 ) => void {
   // make sure the "highest priority" configs are checked first
   const selectorType = Selectors[type];
@@ -71,7 +73,7 @@ function createValidator(
     });
 
   return (
-    node: TSESTree.Identifier | TSESTree.PrivateIdentifier | TSESTree.Literal,
+    node: TSESTree.Identifier | TSESTree.Literal | TSESTree.PrivateIdentifier,
     modifiers: Set<Modifiers> = new Set<Modifiers>(),
   ): void => {
     const originalName =
@@ -101,25 +103,25 @@ function createValidator(
       let name: string | null = originalName;
 
       name = validateUnderscore('leading', config, name, node, originalName);
-      if (name === null) {
+      if (name == null) {
         // fail
         return;
       }
 
       name = validateUnderscore('trailing', config, name, node, originalName);
-      if (name === null) {
+      if (name == null) {
         // fail
         return;
       }
 
       name = validateAffix('prefix', config, name, node, originalName);
-      if (name === null) {
+      if (name == null) {
         // fail
         return;
       }
 
       name = validateAffix('suffix', config, name, node, originalName);
-      if (name === null) {
+      if (name == null) {
         // fail
         return;
       }
@@ -144,36 +146,36 @@ function createValidator(
   // centralizes the logic for formatting the report data
   function formatReportData({
     affixes,
+    count,
+    custom,
     formats,
     originalName,
-    processedName,
     position,
-    custom,
-    count,
+    processedName,
   }: {
     affixes?: string[];
+    count?: 'one' | 'two';
+    custom?: NonNullable<NormalizedSelector['custom']>;
     formats?: PredefinedFormats[];
     originalName: string;
+    position?: 'leading' | 'prefix' | 'suffix' | 'trailing';
     processedName?: string;
-    position?: 'leading' | 'trailing' | 'prefix' | 'suffix';
-    custom?: NonNullable<NormalizedSelector['custom']>;
-    count?: 'one' | 'two';
   }): Record<string, unknown> {
     return {
-      type: selectorTypeToMessageString(type),
-      name: originalName,
-      processedName,
-      position,
-      count,
       affixes: affixes?.join(', '),
+      count,
       formats: formats?.map(f => PredefinedFormats[f]).join(', '),
-      regex: custom?.regex?.toString(),
+      name: originalName,
+      position,
+      processedName,
+      regex: custom?.regex.toString(),
       regexMatch:
         custom?.match === true
           ? 'match'
           : custom?.match === false
-          ? 'not match'
-          : null,
+            ? 'not match'
+            : null,
+      type: selectorTypeToMessageString(type),
     };
   }
 
@@ -184,7 +186,7 @@ function createValidator(
     position: 'leading' | 'trailing',
     config: NormalizedSelector,
     name: string,
-    node: TSESTree.Identifier | TSESTree.PrivateIdentifier | TSESTree.Literal,
+    node: TSESTree.Identifier | TSESTree.Literal | TSESTree.PrivateIdentifier,
     originalName: string,
   ): string | null {
     const option =
@@ -247,13 +249,13 @@ function createValidator(
       case UnderscoreOptions.forbid: {
         if (hasSingleUnderscore()) {
           context.report({
-            node,
-            messageId: 'unexpectedUnderscore',
             data: formatReportData({
+              count: 'one',
               originalName,
               position,
-              count: 'one',
             }),
+            messageId: 'unexpectedUnderscore',
+            node,
           });
           return null;
         }
@@ -265,13 +267,13 @@ function createValidator(
       case UnderscoreOptions.require: {
         if (!hasSingleUnderscore()) {
           context.report({
-            node,
-            messageId: 'missingUnderscore',
             data: formatReportData({
+              count: 'one',
               originalName,
               position,
-              count: 'one',
             }),
+            messageId: 'missingUnderscore',
+            node,
           });
           return null;
         }
@@ -282,13 +284,13 @@ function createValidator(
       case UnderscoreOptions.requireDouble: {
         if (!hasDoubleUnderscore()) {
           context.report({
-            node,
-            messageId: 'missingUnderscore',
             data: formatReportData({
+              count: 'two',
               originalName,
               position,
-              count: 'two',
             }),
+            messageId: 'missingUnderscore',
+            node,
           });
           return null;
         }
@@ -305,7 +307,7 @@ function createValidator(
     position: 'prefix' | 'suffix',
     config: NormalizedSelector,
     name: string,
-    node: TSESTree.Identifier | TSESTree.PrivateIdentifier | TSESTree.Literal,
+    node: TSESTree.Identifier | TSESTree.Literal | TSESTree.PrivateIdentifier,
     originalName: string,
   ): string | null {
     const affixes = config[position];
@@ -328,13 +330,13 @@ function createValidator(
     }
 
     context.report({
-      node,
-      messageId: 'missingAffix',
       data: formatReportData({
+        affixes,
         originalName,
         position,
-        affixes,
       }),
+      messageId: 'missingAffix',
+      node,
     });
     return null;
   }
@@ -345,7 +347,7 @@ function createValidator(
   function validateCustom(
     config: NormalizedSelector,
     name: string,
-    node: TSESTree.Identifier | TSESTree.PrivateIdentifier | TSESTree.Literal,
+    node: TSESTree.Identifier | TSESTree.Literal | TSESTree.PrivateIdentifier,
     originalName: string,
   ): boolean {
     const custom = config.custom;
@@ -362,12 +364,12 @@ function createValidator(
     }
 
     context.report({
-      node,
-      messageId: 'satisfyCustom',
       data: formatReportData({
-        originalName,
         custom,
+        originalName,
       }),
+      messageId: 'satisfyCustom',
+      node,
     });
     return false;
   }
@@ -378,12 +380,12 @@ function createValidator(
   function validatePredefinedFormat(
     config: NormalizedSelector,
     name: string,
-    node: TSESTree.Identifier | TSESTree.PrivateIdentifier | TSESTree.Literal,
+    node: TSESTree.Identifier | TSESTree.Literal | TSESTree.PrivateIdentifier,
     originalName: string,
     modifiers: Set<Modifiers>,
   ): boolean {
     const formats = config.format;
-    if (formats === null || formats.length === 0) {
+    if (!formats?.length) {
       return true;
     }
 
@@ -397,16 +399,16 @@ function createValidator(
     }
 
     context.report({
-      node,
+      data: formatReportData({
+        formats,
+        originalName,
+        processedName: name,
+      }),
       messageId:
         originalName === name
           ? 'doesNotMatchFormat'
           : 'doesNotMatchFormatTrimmed',
-      data: formatReportData({
-        originalName,
-        processedName: name,
-        formats,
-      }),
+      node,
     });
     return false;
   }
@@ -419,7 +421,7 @@ const SelectorsAllowedToHaveTypes =
   Selectors.objectLiteralProperty |
   Selectors.typeProperty |
   Selectors.parameterProperty |
-  Selectors.accessor;
+  Selectors.classicAccessor;
 
 function isCorrectType(
   node: TSESTree.Node,
@@ -427,7 +429,7 @@ function isCorrectType(
   context: Context,
   selector: Selectors,
 ): boolean {
-  if (config.types === null) {
+  if (config.types == null) {
     return true;
   }
 
@@ -435,11 +437,10 @@ function isCorrectType(
     return true;
   }
 
-  const { esTreeNodeToTSNodeMap, program } = util.getParserServices(context);
-  const checker = program.getTypeChecker();
-  const tsNode = esTreeNodeToTSNodeMap.get(node);
-  const type = checker
-    .getTypeAtLocation(tsNode)
+  const services = getParserServices(context);
+  const checker = services.program.getTypeChecker();
+  const type = services
+    .getTypeAtLocation(node)
     // remove null and undefined from the type, as we don't care about it here
     .getNonNullableType();
 
@@ -494,5 +495,3 @@ function isAllTypesMatch(
 
   return cb(type);
 }
-
-export { createValidator };

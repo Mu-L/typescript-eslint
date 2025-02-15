@@ -1,9 +1,8 @@
-import rule from '../../src/rules/no-namespace';
-import { RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+import rule from '../../src/rules/no-namespace';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-namespace', rule, {
   valid: [
@@ -64,13 +63,13 @@ export declare namespace foo {
       options: [{ allowDeclarations: true }],
     },
     {
-      filename: 'test.d.ts',
       code: 'namespace foo {}',
+      filename: 'test.d.ts',
       options: [{ allowDefinitionFiles: true }],
     },
     {
-      filename: 'test.d.ts',
       code: 'module foo {}',
+      filename: 'test.d.ts',
       options: [{ allowDefinitionFiles: true }],
     },
   ],
@@ -79,9 +78,9 @@ export declare namespace foo {
       code: 'module foo {}',
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
     },
@@ -89,63 +88,63 @@ export declare namespace foo {
       code: 'namespace foo {}',
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
     },
     {
       code: 'module foo {}',
-      options: [{ allowDeclarations: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      options: [{ allowDeclarations: false }],
     },
     {
       code: 'namespace foo {}',
-      options: [{ allowDeclarations: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      options: [{ allowDeclarations: false }],
     },
     {
       code: 'module foo {}',
+      errors: [
+        {
+          column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
+        },
+      ],
       options: [{ allowDeclarations: true }],
-      errors: [
-        {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
-          column: 1,
-        },
-      ],
     },
     {
       code: 'namespace foo {}',
+      errors: [
+        {
+          column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
+        },
+      ],
       options: [{ allowDeclarations: true }],
-      errors: [
-        {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
-          column: 1,
-        },
-      ],
     },
     {
       code: 'declare module foo {}',
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
     },
@@ -153,92 +152,92 @@ export declare namespace foo {
       code: 'declare namespace foo {}',
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
     },
     {
       code: 'declare module foo {}',
-      options: [{ allowDeclarations: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      options: [{ allowDeclarations: false }],
     },
     {
       code: 'declare namespace foo {}',
-      options: [{ allowDeclarations: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      options: [{ allowDeclarations: false }],
     },
     {
-      filename: 'test.d.ts',
       code: 'namespace foo {}',
-      options: [{ allowDefinitionFiles: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      filename: 'test.d.ts',
+      options: [{ allowDefinitionFiles: false }],
     },
     {
-      filename: 'test.d.ts',
       code: 'module foo {}',
-      options: [{ allowDefinitionFiles: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      filename: 'test.d.ts',
+      options: [{ allowDefinitionFiles: false }],
     },
     {
-      filename: 'test.d.ts',
       code: 'declare module foo {}',
-      options: [{ allowDefinitionFiles: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      filename: 'test.d.ts',
+      options: [{ allowDefinitionFiles: false }],
     },
     {
-      filename: 'test.d.ts',
       code: 'declare namespace foo {}',
-      options: [{ allowDefinitionFiles: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      filename: 'test.d.ts',
+      options: [{ allowDefinitionFiles: false }],
     },
     {
       code: 'namespace Foo.Bar {}',
-      options: [{ allowDeclarations: false }],
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 1,
           column: 1,
+          line: 1,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
+      options: [{ allowDeclarations: false }],
     },
     {
       code: `
@@ -250,14 +249,14 @@ namespace Foo.Bar {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 3,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
     },
@@ -271,14 +270,14 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 3,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -293,14 +292,14 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 3,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -315,9 +314,9 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -332,9 +331,9 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -349,9 +348,9 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -366,9 +365,9 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -383,9 +382,9 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -400,14 +399,14 @@ namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 1,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 10,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -422,14 +421,14 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 3,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -444,14 +443,14 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 3,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -466,9 +465,9 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -483,9 +482,9 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -500,9 +499,9 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -517,9 +516,9 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -534,9 +533,9 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],
@@ -551,14 +550,14 @@ export namespace A {
       `,
       errors: [
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 2,
           column: 8,
+          line: 2,
+          messageId: 'moduleSyntaxIsPreferred',
         },
         {
-          messageId: 'moduleSyntaxIsPreferred',
-          line: 3,
           column: 10,
+          line: 3,
+          messageId: 'moduleSyntaxIsPreferred',
         },
       ],
       options: [{ allowDeclarations: true }],

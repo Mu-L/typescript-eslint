@@ -1,15 +1,16 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule } from '../util';
 
-export default util.createRule({
+export default createRule({
   name: 'prefer-as-const',
   meta: {
     type: 'suggestion',
     docs: {
       description: 'Enforce the use of `as const` over literal type',
-      recommended: 'error',
+      recommended: 'recommended',
     },
     fixable: 'code',
     hasSuggestions: true,
@@ -32,7 +33,7 @@ export default util.createRule({
       if (
         valueNode.type === AST_NODE_TYPES.Literal &&
         typeNode.type === AST_NODE_TYPES.TSLiteralType &&
-        'raw' in typeNode.literal &&
+        typeNode.literal.type === AST_NODE_TYPES.Literal &&
         valueNode.raw === typeNode.literal.raw
       ) {
         if (canFix) {
@@ -49,7 +50,7 @@ export default util.createRule({
               {
                 messageId: 'variableSuggest',
                 fix: (fixer): TSESLint.RuleFix[] => [
-                  fixer.remove(typeNode.parent!),
+                  fixer.remove(typeNode.parent),
                   fixer.insertTextAfter(valueNode, ' as const'),
                 ],
               },
@@ -60,16 +61,16 @@ export default util.createRule({
     }
 
     return {
+      PropertyDefinition(node): void {
+        if (node.value && node.typeAnnotation) {
+          compareTypes(node.value, node.typeAnnotation.typeAnnotation, false);
+        }
+      },
       TSAsExpression(node): void {
         compareTypes(node.expression, node.typeAnnotation, true);
       },
       TSTypeAssertion(node): void {
         compareTypes(node.expression, node.typeAnnotation, true);
-      },
-      PropertyDefinition(node): void {
-        if (node.value && node.typeAnnotation) {
-          compareTypes(node.value, node.typeAnnotation.typeAnnotation, false);
-        }
       },
       VariableDeclarator(node): void {
         if (node.init && node.id.typeAnnotation) {

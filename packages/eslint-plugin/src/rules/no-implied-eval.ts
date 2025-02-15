@@ -1,45 +1,48 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as tsutils from 'tsutils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
-import * as util from '../util';
+import {
+  createRule,
+  getParserServices,
+  isBuiltinSymbolLike,
+  isReferenceToGlobalFunction,
+} from '../util';
 
 const FUNCTION_CONSTRUCTOR = 'Function';
-const GLOBAL_CANDIDATES = new Set(['global', 'window', 'globalThis']);
-const EVAL_LIKE_METHODS = new Set([
+const GLOBAL_CANDIDATES = new Set(['global', 'globalThis', 'window']);
+const EVAL_LIKE_FUNCTIONS = new Set([
+  'execScript',
   'setImmediate',
   'setInterval',
   'setTimeout',
-  'execScript',
 ]);
 
-export default util.createRule({
+export default createRule({
   name: 'no-implied-eval',
   meta: {
+    type: 'suggestion',
     docs: {
-      description: 'Disallow the use of `eval()`-like methods',
-      recommended: 'error',
+      description: 'Disallow the use of `eval()`-like functions',
       extendsBaseRule: true,
+      recommended: 'recommended',
       requiresTypeChecking: true,
     },
     messages: {
-      noImpliedEvalError: 'Implied eval. Consider passing a function.',
       noFunctionConstructor:
         'Implied eval. Do not use the Function constructor to create functions.',
+      noImpliedEvalError: 'Implied eval. Consider passing a function.',
     },
     schema: [],
-    type: 'suggestion',
   },
   defaultOptions: [],
   create(context) {
-    const parserServices = util.getParserServices(context);
-    const program = parserServices.program;
-    const checker = parserServices.program.getTypeChecker();
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
 
-    function getCalleeName(
-      node: TSESTree.LeftHandSideExpression,
-    ): string | null {
+    function getCalleeName(node: TSESTree.Expression): string | null {
       if (node.type === AST_NODE_TYPES.Identifier) {
         return node.name;
       }
@@ -65,8 +68,7 @@ export default util.createRule({
     }
 
     function isFunctionType(node: TSESTree.Node): boolean {
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
-      const type = checker.getTypeAtLocation(tsNode);
+      const type = services.getTypeAtLocation(node);
       const symbol = type.getSymbol();
 
       if (
@@ -79,14 +81,8 @@ export default util.createRule({
         return true;
       }
 
-      if (symbol && symbol.escapedName === FUNCTION_CONSTRUCTOR) {
-        const declarations = symbol.getDeclarations() ?? [];
-        for (const declaration of declarations) {
-          const sourceFile = declaration.getSourceFile();
-          if (program.isSourceFileDefaultLibrary(sourceFile)) {
-            return true;
-          }
-        }
+      if (isBuiltinSymbolLike(services.program, type, FUNCTION_CONSTRUCTOR)) {
+        return true;
       }
 
       const signatures = checker.getSignaturesOfType(
@@ -122,35 +118,23 @@ export default util.createRule({
       }
     }
 
-    function isReferenceToGlobalFunction(calleeName: string): boolean {
-      const ref = context
-        .getScope()
-        .references.find(ref => ref.identifier.name === calleeName);
-
-      // ensure it's the "global" version
-      return !ref?.resolved || ref.resolved.defs.length === 0;
-    }
-
     function checkImpliedEval(
-      node: TSESTree.NewExpression | TSESTree.CallExpression,
+      node: TSESTree.CallExpression | TSESTree.NewExpression,
     ): void {
       const calleeName = getCalleeName(node.callee);
-      if (calleeName === null) {
+      if (calleeName == null) {
         return;
       }
 
       if (calleeName === FUNCTION_CONSTRUCTOR) {
-        const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node.callee);
-        const type = checker.getTypeAtLocation(tsNode);
+        const type = services.getTypeAtLocation(node.callee);
         const symbol = type.getSymbol();
         if (symbol) {
-          const declarations = symbol.getDeclarations() ?? [];
-          for (const declaration of declarations) {
-            const sourceFile = declaration.getSourceFile();
-            if (program.isSourceFileDefaultLibrary(sourceFile)) {
-              context.report({ node, messageId: 'noFunctionConstructor' });
-              return;
-            }
+          if (
+            isBuiltinSymbolLike(services.program, type, 'FunctionConstructor')
+          ) {
+            context.report({ node, messageId: 'noFunctionConstructor' });
+            return;
           }
         } else {
           context.report({ node, messageId: 'noFunctionConstructor' });
@@ -164,17 +148,17 @@ export default util.createRule({
 
       const [handler] = node.arguments;
       if (
-        EVAL_LIKE_METHODS.has(calleeName) &&
+        EVAL_LIKE_FUNCTIONS.has(calleeName) &&
         !isFunction(handler) &&
-        isReferenceToGlobalFunction(calleeName)
+        isReferenceToGlobalFunction(calleeName, node, context.sourceCode)
       ) {
         context.report({ node: handler, messageId: 'noImpliedEvalError' });
       }
     }
 
     return {
-      NewExpression: checkImpliedEval,
       CallExpression: checkImpliedEval,
+      NewExpression: checkImpliedEval,
     };
   },
 });

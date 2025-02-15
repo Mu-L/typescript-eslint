@@ -1,83 +1,82 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { shallowEqual } from '../lib/shallowEqual';
-import type { ConfigModel, TSConfig } from '../types';
+import type { ConfigModel } from '../types';
 import type { ConfigOptionsType } from './ConfigEditor';
+
+import { ensureObject, parseJSONObject, toJson } from '../lib/json';
+import { getTypescriptOptions } from '../lib/jsonSchema';
+import { shallowEqual } from '../lib/shallowEqual';
 import ConfigEditor from './ConfigEditor';
-import { getTypescriptOptions, parseTSConfig, toJson } from './utils';
 
 interface ConfigTypeScriptProps {
-  readonly isOpen: boolean;
-  readonly onClose: (config?: Partial<ConfigModel>) => void;
+  readonly className?: string;
   readonly config?: string;
+  readonly onChange: (config: Partial<ConfigModel>) => void;
 }
 
-function ConfigTypeScript(props: ConfigTypeScriptProps): JSX.Element {
-  const { onClose: onCloseProps, isOpen, config } = props;
-  const [tsConfigOptions, updateOptions] = useState<ConfigOptionsType[]>([]);
-  const [configObject, updateConfigObject] = useState<TSConfig>();
+function ConfigTypeScript(props: ConfigTypeScriptProps): React.JSX.Element {
+  const { className, config, onChange: onChangeProp } = props;
+
+  const [configObject, updateConfigObject] = useState<Record<string, unknown>>(
+    () => ({}),
+  );
 
   useEffect(() => {
-    if (isOpen) {
-      updateConfigObject(parseTSConfig(config));
-    }
-  }, [isOpen, config]);
-
-  useEffect(() => {
-    if (window.ts) {
-      updateOptions(
-        Object.values(
-          getTypescriptOptions().reduce<Record<string, ConfigOptionsType>>(
-            (group, item) => {
-              const category = item.category!.message;
-              group[category] = group[category] ?? {
-                heading: category,
-                fields: [],
-              };
-              if (item.type === 'boolean') {
-                group[category].fields.push({
-                  key: item.name,
-                  type: 'boolean',
-                  label: item.description!.message,
-                });
-              } else if (item.type instanceof Map) {
-                group[category].fields.push({
-                  key: item.name,
-                  type: 'string',
-                  label: item.description!.message,
-                  enum: ['', ...Array.from<string>(item.type.keys())],
-                });
-              }
-              return group;
-            },
-            {},
-          ),
-        ),
-      );
-    }
-  }, [isOpen]);
-
-  const onClose = useCallback(
-    (newConfig: Record<string, unknown>) => {
-      const cfg = { ...newConfig };
-      if (!shallowEqual(cfg, configObject?.compilerOptions)) {
-        onCloseProps({
-          tsconfig: toJson({ ...(configObject ?? {}), compilerOptions: cfg }),
-        });
-      } else {
-        onCloseProps();
+    updateConfigObject(oldConfig => {
+      const newConfig = ensureObject(parseJSONObject(config).compilerOptions);
+      if (shallowEqual(oldConfig, newConfig)) {
+        return oldConfig;
       }
+      return newConfig;
+    });
+  }, [config]);
+
+  const options = useMemo((): ConfigOptionsType[] => {
+    return Object.values(
+      getTypescriptOptions().reduce<Record<string, ConfigOptionsType>>(
+        (group, item) => {
+          const category = item.category.message;
+          group[category] ??= {
+            fields: [],
+            heading: category,
+          };
+          if (item.type === 'boolean') {
+            group[category].fields.push({
+              key: item.name,
+              label: item.description.message,
+              type: 'boolean',
+            });
+          } else if (item.type instanceof Map) {
+            group[category].fields.push({
+              enum: ['', ...item.type.keys()],
+              key: item.name,
+              label: item.description.message,
+              type: 'string',
+            });
+          }
+          return group;
+        },
+        {},
+      ),
+    );
+  }, []);
+
+  const onChange = useCallback(
+    (newConfig: Record<string, unknown>) => {
+      const parsed = parseJSONObject(config);
+      parsed.compilerOptions = newConfig;
+      updateConfigObject(newConfig);
+      onChangeProp({ tsconfig: toJson(parsed) });
     },
-    [onCloseProps, configObject],
+    [config, onChangeProp],
   );
 
   return (
     <ConfigEditor
-      header="TypeScript Config"
-      options={tsConfigOptions}
-      values={configObject?.compilerOptions ?? {}}
-      isOpen={isOpen}
-      onClose={onClose}
+      className={className}
+      onChange={onChange}
+      options={options}
+      values={configObject}
     />
   );
 }

@@ -1,14 +1,20 @@
 {
+  "name": "ast-spec",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "type": "library",
   "implicitDependencies": [],
   "targets": {
-    "lint": {
-      "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+    "build": {
+      "executor": "nx:run-commands",
       "options": {
-        "lintFilePatterns": ["packages/ast-spec/**/*.ts"]
-      }
+        "cwd": "packages/ast-spec",
+        "commands": ["yarn build"]
+      },
+      "outputs": ["{projectRoot}/dist/**/*.ts"]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
     }
   }
 }

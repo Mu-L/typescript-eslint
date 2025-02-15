@@ -1,18 +1,60 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { getESLintCoreRule } from '../../src/util/getESLintCoreRule';
-import { RuleTester } from '../RuleTester';
 
 const rule = getESLintCoreRule('no-restricted-globals');
 
-const ruleTester = new RuleTester({
-  parserOptions: {
-    ecmaVersion: 6,
-    sourceType: 'module',
-    ecmaFeatures: {},
-  },
-  parser: '@typescript-eslint/parser',
-});
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-restricted-globals', rule, {
+  invalid: [
+    {
+      code: `
+function onClick() {
+  console.log(event);
+}
+
+fdescribe('foo', function () {});
+      `,
+      errors: [
+        {
+          data: {
+            name: 'event',
+          },
+          messageId: 'defaultMessage',
+        },
+      ],
+      options: ['event'],
+    },
+    {
+      code: `
+confirm('TEST');
+      `,
+      errors: [
+        {
+          data: {
+            name: 'confirm',
+          },
+          messageId: 'defaultMessage',
+        },
+      ],
+      options: ['confirm'],
+    },
+    {
+      code: `
+var a = confirm('TEST')?.a;
+      `,
+      errors: [
+        {
+          data: {
+            name: 'confirm',
+          },
+          messageId: 'defaultMessage',
+        },
+      ],
+      options: ['confirm'],
+    },
+  ],
   valid: [
     // https://github.com/eslint/typescript-eslint-parser/issues/487
     {
@@ -51,54 +93,6 @@ type Handler = (event: string) => any;
       code: `
         const a = foo()?.bar ?? true;
       `,
-    },
-  ],
-  invalid: [
-    {
-      code: `
-function onClick() {
-  console.log(event);
-}
-
-fdescribe('foo', function () {});
-      `,
-      options: ['event'],
-      errors: [
-        {
-          messageId: 'defaultMessage',
-          data: {
-            name: 'event',
-          },
-        },
-      ],
-    },
-    {
-      code: `
-confirm('TEST');
-      `,
-      options: ['confirm'],
-      errors: [
-        {
-          messageId: 'defaultMessage',
-          data: {
-            name: 'confirm',
-          },
-        },
-      ],
-    },
-    {
-      code: `
-var a = confirm('TEST')?.a;
-      `,
-      options: ['confirm'],
-      errors: [
-        {
-          messageId: 'defaultMessage',
-          data: {
-            name: 'confirm',
-          },
-        },
-      ],
     },
   ],
 });

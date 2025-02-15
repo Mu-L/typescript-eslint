@@ -1,21 +1,20 @@
 {
+  "name": "scope-manager",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/scope-manager/src",
   "projectType": "library",
+  "tags": [],
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "packages/scope-manager/dist",
-        "packages/scope-manager/_ts3.4"
-      ],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/_ts4.3"],
       "options": {
         "parallel": false,
         "cwd": "packages/scope-manager",
         "commands": [
-          "rimraf _ts3.4",
+          "rimraf _ts4.3",
           "tsc -b tsconfig.build.json",
-          "downlevel-dts dist _ts3.4/dist"
+          "downlevel-dts dist _ts4.3/dist --to=4.3"
         ]
       }
     },
@@ -38,7 +37,7 @@
         "commands": [
           "tsc -b tsconfig.build.json --clean",
           "rimraf dist",
-          "rimraf _ts3.4",
+          "rimraf _ts4.3",
           "rimraf coverage"
         ]
       }
@@ -52,30 +51,14 @@
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
-      "options": {
-        "lintFilePatterns": ["packages/scope-manager/**/*.ts"]
-      }
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
     },
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["packages/scope-manager/coverage"],
+      "executor": "@nx/jest:jest",
       "options": {
-        "jestConfig": "packages/scope-manager/jest.config.js",
-        "passWithNoTests": true
-      }
-    },
-    "generate-lib": {
-      "executor": "nx:run-commands",
-      "options": {
-        "parallel": false,
-        "cwd": "packages/scope-manager",
-        "commands": [
-          "../../node_modules/.bin/ts-node --files --transpile-only tools/generate-lib.ts"
-        ]
+        "jestConfig": "packages/scope-manager/jest.config.js"
       }
     }
-  },
-  "tags": []
+  }
 }

@@ -1,7 +1,8 @@
-import { getContextualType } from '@typescript-eslint/type-utils';
 import type { TSESTree } from '@typescript-eslint/utils';
+
+import prettier from '@prettier/sync';
+import { getContextualType } from '@typescript-eslint/type-utils';
 import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils';
-import { format, resolveConfig } from 'prettier';
 
 import { createRule } from '../util';
 
@@ -45,8 +46,8 @@ const a = 1;
 ]
 */
 
-const prettierConfig = resolveConfig.sync(__dirname) ?? {};
-const START_OF_LINE_WHITESPACE_MATCHER = /^([ ]*)/;
+const prettierConfig = prettier.resolveConfig(__dirname) ?? {};
+const START_OF_LINE_WHITESPACE_MATCHER = /^( *)/;
 const BACKTICK_REGEX = /`/g;
 const TEMPLATE_EXPR_OPENER = /\$\{/g;
 
@@ -55,6 +56,7 @@ function getExpectedIndentForNode(
   sourceCodeLines: string[],
 ): number {
   const lineIdx = node.loc.start.line - 1;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const indent = START_OF_LINE_WHITESPACE_MATCHER.exec(
     sourceCodeLines[lineIdx],
   )![1];
@@ -62,7 +64,7 @@ function getExpectedIndentForNode(
 }
 function doIndent(line: string, indent: number): string {
   for (let i = 0; i < indent; i += 1) {
-    line = ' ' + line;
+    line = ` ${line}`;
   }
   return line;
 }
@@ -80,8 +82,8 @@ function getQuote(code: string): "'" | '"' | null {
 
 function escapeTemplateString(code: string): string {
   let fixed = code;
-  fixed = fixed.replace(BACKTICK_REGEX, '\\`');
-  fixed = fixed.replace(TEMPLATE_EXPR_OPENER, '\\${');
+  fixed = fixed.replaceAll(BACKTICK_REGEX, '\\`');
+  fixed = fixed.replaceAll(TEMPLATE_EXPR_OPENER, '\\${');
   return fixed;
 }
 
@@ -95,12 +97,18 @@ type Options = [
 type MessageIds =
   | 'invalidFormatting'
   | 'invalidFormattingErrorTest'
+  | 'noUnnecessaryNoFormat'
+  | 'prettierException'
   | 'singleLineQuotes'
   | 'templateLiteralEmptyEnds'
   | 'templateLiteralLastLineIndent'
-  | 'templateStringRequiresIndent'
   | 'templateStringMinimumIndent'
-  | 'prettierException';
+  | 'templateStringRequiresIndent';
+
+type FormattingError = {
+  codeFrame: string;
+  loc?: unknown;
+} & Error;
 
 export default createRule<Options, MessageIds>({
   name: 'plugin-test-formatting',
@@ -108,10 +116,28 @@ export default createRule<Options, MessageIds>({
     type: 'problem',
     docs: {
       description: `Enforce that eslint-plugin test snippets are correctly formatted`,
-      recommended: 'error',
       requiresTypeChecking: true,
     },
     fixable: 'code',
+    messages: {
+      invalidFormatting:
+        'This snippet should be formatted correctly. Use the fixer to format the code.',
+      invalidFormattingErrorTest:
+        'This snippet should be formatted correctly. Use the fixer to format the code. Note that the automated fixer may break your test locations.',
+      noUnnecessaryNoFormat:
+        'noFormat is unnecessary here. Use the fixer to remove it.',
+      prettierException:
+        'Prettier was unable to format this snippet: {{message}}',
+      singleLineQuotes: 'Use quotes (\' or ") for single line tests.',
+      templateLiteralEmptyEnds:
+        'Template literals must start and end with an empty line.',
+      templateLiteralLastLineIndent:
+        'The closing line of the template literal must be indented to align with its parent.',
+      templateStringMinimumIndent:
+        'Test code should be indented at least {{indent}} spaces.',
+      templateStringRequiresIndent:
+        'Test code should either have no indent, or be indented {{indent}} spaces.',
+    },
     schema: [
       {
         type: 'object',
@@ -123,23 +149,6 @@ export default createRule<Options, MessageIds>({
         },
       },
     ],
-    messages: {
-      invalidFormatting:
-        'This snippet should be formatted correctly. Use the fixer to format the code.',
-      invalidFormattingErrorTest:
-        'This snippet should be formatted correctly. Use the fixer to format the code. Note that the automated fixer may break your test locations.',
-      singleLineQuotes: 'Use quotes (\' or ") for single line tests.',
-      templateLiteralEmptyEnds:
-        'Template literals must start and end with an empty line.',
-      templateLiteralLastLineIndent:
-        'The closing line of the template literal must be indented to align with its parent.',
-      templateStringRequiresIndent:
-        'Test code should either have no indent, or be indented {{indent}} spaces.',
-      templateStringMinimumIndent:
-        'Test code should be indented at least {{indent}} spaces.',
-      prettierException:
-        'Prettier was unable to format this snippet: {{message}}',
-    },
   },
   defaultOptions: [
     {
@@ -147,14 +156,34 @@ export default createRule<Options, MessageIds>({
     },
   ],
   create(context, [{ formatWithPrettier }]) {
-    const sourceCode = context.getSourceCode();
-    const { program, esTreeNodeToTSNodeMap } =
-      ESLintUtils.getParserServices(context);
-    const checker = program.getTypeChecker();
+    const services = ESLintUtils.getParserServices(context);
+    const checker = services.program.getTypeChecker();
 
     const checkedObjects = new Set<TSESTree.ObjectExpression>();
 
-    function prettierFormat(
+    function getCodeFormatted(code: string): string | FormattingError {
+      try {
+        return prettier
+          .format(code, {
+            ...prettierConfig,
+            parser: 'typescript',
+          })
+          .trimEnd(); // prettier will insert a new line at the end of the code
+      } catch (ex) {
+        // ex instanceof Error is false as of @prettier/sync@0.3.0, as is ex instanceof SyntaxError
+        if (
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          (ex as Partial<Error> | undefined)?.constructor?.name !==
+          'SyntaxError'
+        ) {
+          throw ex;
+        }
+
+        return ex as FormattingError;
+      }
+    }
+
+    function getCodeFormattedOrReport(
       code: string,
       location: TSESTree.Node,
     ): string | null {
@@ -162,43 +191,35 @@ export default createRule<Options, MessageIds>({
         return null;
       }
 
-      try {
-        return format(code, {
-          ...prettierConfig,
-          parser: 'typescript',
-        }).trimEnd(); // prettier will insert a new line at the end of the code
-      } catch (ex) {
-        // adapted from https://github.com/prettier/eslint-plugin-prettier/blob/185b1064d3dd674538456fb2fad97fbfcde49e0d/eslint-plugin-prettier.js#L242-L257
-        if (!(ex instanceof SyntaxError)) {
-          throw ex;
-        }
-        const err = ex as Error & {
-          codeFrame: string;
-          loc?: unknown;
-        };
-
-        let message = err.message;
-
-        if (err.codeFrame) {
-          message = message.replace(`\n${err.codeFrame}`, '');
-        }
-        if (err.loc) {
-          message = message.replace(/ \(\d+:\d+\)$/, '');
-        }
-
-        context.report({
-          node: location,
-          messageId: 'prettierException',
-          data: {
-            message,
-          },
-        });
-        return null;
+      const formatted = getCodeFormatted(code);
+      if (typeof formatted === 'string') {
+        return formatted;
       }
+
+      let message = formatted.message;
+
+      if (formatted.codeFrame) {
+        message = message.replace(`\n${formatted.codeFrame}`, '');
+      }
+      if (formatted.loc) {
+        message = message.replace(/ \(\d+:\d+\)$/, '');
+      }
+
+      context.report({
+        node: location,
+        messageId: 'prettierException',
+        data: {
+          message,
+        },
+      });
+      return null;
     }
 
-    function checkExpression(node: TSESTree.Node, isErrorTest: boolean): void {
-      switch (node.type) {
+    function checkExpression(
+      node: TSESTree.Node | null,
+      isErrorTest: boolean,
+    ): void {
+      switch (node?.type) {
         case AST_NODE_TYPES.Literal:
           checkLiteral(node, isErrorTest);
           break;
@@ -223,7 +244,7 @@ export default createRule<Options, MessageIds>({
       quoteIn?: string,
     ): void {
       if (typeof literal.value === 'string') {
-        const output = prettierFormat(literal.value, literal);
+        const output = getCodeFormattedOrReport(literal.value, literal);
         if (output && output !== literal.value) {
           context.report({
             node: literal,
@@ -317,7 +338,10 @@ export default createRule<Options, MessageIds>({
         });
       }
 
-      const parentIndent = getExpectedIndentForNode(literal, sourceCode.lines);
+      const parentIndent = getExpectedIndentForNode(
+        literal,
+        context.sourceCode.lines,
+      );
       if (lastLine.length !== parentIndent) {
         return context.report({
           node: literal,
@@ -338,6 +362,7 @@ export default createRule<Options, MessageIds>({
       // +2 because we expect the string contents are indented one level
       const expectedIndent = parentIndent + 2;
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const firstLineIndent = START_OF_LINE_WHITESPACE_MATCHER.exec(
         lines[0],
       )![1];
@@ -360,6 +385,7 @@ export default createRule<Options, MessageIds>({
             continue;
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           const matches = START_OF_LINE_WHITESPACE_MATCHER.exec(line)!;
 
           const indent = matches[1];
@@ -381,12 +407,16 @@ export default createRule<Options, MessageIds>({
         }
       }
 
+      const code = lines.join('\n');
+
       if (isNoFormatTagged) {
+        if (literal.parent.type === AST_NODE_TYPES.TaggedTemplateExpression) {
+          checkForUnnecesaryNoFormat(code, literal.parent);
+        }
         return;
       }
 
-      const code = lines.join('\n');
-      const formatted = prettierFormat(code, literal);
+      const formatted = getCodeFormattedOrReport(code, literal);
       if (formatted && formatted !== code) {
         const formattedIndented = requiresIndent
           ? formatted
@@ -413,17 +443,37 @@ export default createRule<Options, MessageIds>({
       }
     }
 
-    function isNoFormatTemplateTag(
-      tag: TSESTree.LeftHandSideExpression,
-    ): boolean {
+    function isNoFormatTemplateTag(tag: TSESTree.Expression): boolean {
       return tag.type === AST_NODE_TYPES.Identifier && tag.name === 'noFormat';
+    }
+
+    function checkForUnnecesaryNoFormat(
+      text: string,
+      expr: TSESTree.TaggedTemplateExpression,
+    ): void {
+      const formatted = getCodeFormatted(text);
+      if (formatted === text) {
+        context.report({
+          node: expr,
+          messageId: 'noUnnecessaryNoFormat',
+          fix(fixer) {
+            if (expr.loc.start.line === expr.loc.end.line) {
+              return fixer.replaceText(expr, `'${escapeTemplateString(text)}'`);
+            }
+            return fixer.replaceText(expr.tag, '');
+          },
+        });
+      }
     }
 
     function checkTaggedTemplateExpression(
       expr: TSESTree.TaggedTemplateExpression,
       isErrorTest: boolean,
     ): void {
-      if (!isNoFormatTemplateTag(expr.tag)) {
+      if (isNoFormatTemplateTag(expr.tag)) {
+        const { cooked } = expr.quasi.quasis[0].value;
+        checkForUnnecesaryNoFormat(cooked, expr);
+      } else {
         return;
       }
 
@@ -478,7 +528,7 @@ export default createRule<Options, MessageIds>({
 
     function checkValidTest(tests: TSESTree.ArrayExpression): void {
       for (const test of tests.elements) {
-        switch (test.type) {
+        switch (test?.type) {
           case AST_NODE_TYPES.ObjectExpression:
             // delegate object-style tests to the invalid checker
             checkInvalidTest(test, false);
@@ -519,14 +569,14 @@ export default createRule<Options, MessageIds>({
 
         const type = getContextualType(
           checker,
-          esTreeNodeToTSNodeMap.get(node),
+          services.esTreeNodeToTSNodeMap.get(node),
         );
         if (!type) {
           return;
         }
 
         const typeString = checker.typeToString(type);
-        if (/^RunTests\b/.test(typeString)) {
+        if (/^(TSESLint\.)?RunTests\b/.test(typeString)) {
           checkedObjects.add(node);
 
           for (const prop of node.properties) {
@@ -546,7 +596,7 @@ export default createRule<Options, MessageIds>({
 
               case 'invalid':
                 for (const element of prop.value.elements) {
-                  if (element.type === AST_NODE_TYPES.ObjectExpression) {
+                  if (element?.type === AST_NODE_TYPES.ObjectExpression) {
                     checkInvalidTest(element);
                   }
                 }
@@ -556,12 +606,12 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-        if (/^ValidTestCase\b/.test(typeString)) {
+        if (/^(TSESLint\.)?ValidTestCase\b/.test(typeString)) {
           checkInvalidTest(node);
           return;
         }
 
-        if (/^InvalidTestCase\b/.test(typeString)) {
+        if (/^(TSESLint\.)?InvalidTestCase\b/.test(typeString)) {
           checkInvalidTest(node);
           for (const testProp of node.properties) {
             if (
@@ -575,7 +625,7 @@ export default createRule<Options, MessageIds>({
             }
 
             for (const errorElement of testProp.value.elements) {
-              if (errorElement.type !== AST_NODE_TYPES.ObjectExpression) {
+              if (errorElement?.type !== AST_NODE_TYPES.ObjectExpression) {
                 continue;
               }
 

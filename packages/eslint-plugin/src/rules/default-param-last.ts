@@ -1,4 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import { createRule } from '../util';
@@ -9,13 +10,12 @@ export default createRule({
     type: 'suggestion',
     docs: {
       description: 'Enforce default parameters to be last',
-      recommended: false,
       extendsBaseRule: true,
     },
-    schema: [],
     messages: {
       shouldBeLast: 'Default parameters should be last.',
     },
+    schema: [],
   },
   defaultOptions: [],
   create(context) {
@@ -25,7 +25,14 @@ export default createRule({
      * @private
      */
     function isOptionalParam(node: TSESTree.Parameter): boolean {
-      return 'optional' in node && node.optional === true;
+      return (
+        (node.type === AST_NODE_TYPES.ArrayPattern ||
+          node.type === AST_NODE_TYPES.AssignmentPattern ||
+          node.type === AST_NODE_TYPES.Identifier ||
+          node.type === AST_NODE_TYPES.ObjectPattern ||
+          node.type === AST_NODE_TYPES.RestElement) &&
+        node.optional
+      );
     }
 
     /**

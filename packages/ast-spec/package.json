@@ -1,7 +1,7 @@
 {
   "name": "@typescript-eslint/ast-spec",
-  "version": "5.44.0",
-  "description": "TypeScript-ESTree AST spec",
+  "version": "8.24.0",
+  "description": "Complete specification for the TypeScript-ESTree AST",
   "private": true,
   "keywords": [
     "eslint",
@@ -9,7 +9,7 @@
     "estree"
   ],
   "engines": {
-    "node": "^12.22.0 || ^14.17.0 || >=16.0.0"
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
   },
   "files": [
     "dist",
@@ -25,35 +25,38 @@
   "bugs": {
     "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
   },
+  "homepage": "https://typescript-eslint.io",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -b tsconfig.build.json && api-extractor run --local",
     "clean": "tsc -b tsconfig.build.json --clean",
-    "postclean": "rimraf dist && rimraf _ts3.4 && rimraf .rollup.cache && rimraf coverage",
+    "postclean": "rimraf dist && rimraf coverage",
     "clean-fixtures": "rimraf -g \"./src/**/fixtures/**/snapshots\"",
     "format": "prettier --write \"./**/*.{ts,mts,cts,tsx,js,mjs,cjs,jsx,json,md,css}\" --ignore-path ../../.prettierignore",
-    "lint": "nx lint",
+    "lint": "npx nx lint",
     "test": "jest",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "funding": {
     "type": "opencollective",
     "url": "https://opencollective.com/typescript-eslint"
   },
   "devDependencies": {
+    "@babel/code-frame": "*",
     "@babel/core": "*",
     "@babel/eslint-parser": "*",
-    "@babel/parser": "*",
-    "@microsoft/api-extractor": "^7.23.2",
-    "@types/babel__core": "*",
+    "@jest/types": "29.6.3",
+    "@microsoft/api-extractor": "^7.47.11",
     "glob": "*",
-    "jest-diff": "*",
-    "jest-snapshot": "*",
-    "jest-specific-snapshot": "*",
+    "jest": "29.7.0",
+    "jest-diff": "^29.7.0",
+    "jest-specific-snapshot": "^8.0.0",
     "make-dir": "*",
+    "prettier": "^3.2.5",
     "pretty-format": "*",
+    "rimraf": "*",
     "typescript": "*"
   }
 }

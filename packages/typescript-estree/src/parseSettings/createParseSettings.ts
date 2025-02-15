@@ -1,70 +1,142 @@
 import debug from 'debug';
-import { sync as globSync } from 'globby';
-import isGlob from 'is-glob';
+import path from 'node:path';
+import * as ts from 'typescript';
 
-import type { CanonicalPath } from '../create-program/shared';
-import {
-  ensureAbsolutePath,
-  getCanonicalFileName,
-} from '../create-program/shared';
+import type { ProjectServiceSettings } from '../create-program/createProjectService';
 import type { TSESTreeOptions } from '../parser-options';
 import type { MutableParseSettings } from './index';
+
+import { createProjectService } from '../create-program/createProjectService';
+import { ensureAbsolutePath } from '../create-program/shared';
+import { isSourceFile } from '../source-files';
+import {
+  DEFAULT_TSCONFIG_CACHE_DURATION_SECONDS,
+  ExpiringCache,
+} from './ExpiringCache';
+import { getProjectConfigFiles } from './getProjectConfigFiles';
 import { inferSingleRun } from './inferSingleRun';
+import { resolveProjectList } from './resolveProjectList';
 import { warnAboutTSVersion } from './warnAboutTSVersion';
 
 const log = debug(
-  'typescript-eslint:typescript-estree:parser:parseSettings:createParseSettings',
+  'typescript-eslint:typescript-estree:parseSettings:createParseSettings',
 );
 
+let TSCONFIG_MATCH_CACHE: ExpiringCache<string, string> | null;
+let TSSERVER_PROJECT_SERVICE: ProjectServiceSettings | null = null;
+
+// NOTE - we intentionally use "unnecessary" `?.` here because in TS<5.3 this enum doesn't exist
+// This object exists so we can centralize these for tracking and so we don't proliferate these across the file
+// https://github.com/microsoft/TypeScript/issues/56579
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+const JSDocParsingMode = {
+  ParseAll: ts.JSDocParsingMode?.ParseAll,
+  ParseForTypeErrors: ts.JSDocParsingMode?.ParseForTypeErrors,
+  ParseForTypeInfo: ts.JSDocParsingMode?.ParseForTypeInfo,
+  ParseNone: ts.JSDocParsingMode?.ParseNone,
+} as const;
+/* eslint-enable @typescript-eslint/no-unnecessary-condition */
+
 export function createParseSettings(
-  code: string,
-  options: Partial<TSESTreeOptions> = {},
+  code: string | ts.SourceFile,
+  tsestreeOptions: Partial<TSESTreeOptions> = {},
 ): MutableParseSettings {
+  const codeFullText = enforceCodeString(code);
+  const singleRun = inferSingleRun(tsestreeOptions);
   const tsconfigRootDir =
-    typeof options.tsconfigRootDir === 'string'
-      ? options.tsconfigRootDir
+    typeof tsestreeOptions.tsconfigRootDir === 'string'
+      ? tsestreeOptions.tsconfigRootDir
       : process.cwd();
+  const passedLoggerFn = typeof tsestreeOptions.loggerFn === 'function';
+  const filePath = ensureAbsolutePath(
+    typeof tsestreeOptions.filePath === 'string' &&
+      tsestreeOptions.filePath !== '<input>'
+      ? tsestreeOptions.filePath
+      : getFileName(tsestreeOptions.jsx),
+    tsconfigRootDir,
+  );
+  const extension = path.extname(filePath).toLowerCase() as ts.Extension;
+  const jsDocParsingMode = ((): ts.JSDocParsingMode => {
+    switch (tsestreeOptions.jsDocParsingMode) {
+      case 'all':
+        return JSDocParsingMode.ParseAll;
+
+      case 'none':
+        return JSDocParsingMode.ParseNone;
+
+      case 'type-info':
+        return JSDocParsingMode.ParseForTypeInfo;
+
+      default:
+        return JSDocParsingMode.ParseAll;
+    }
+  })();
+
   const parseSettings: MutableParseSettings = {
-    code: enforceString(code),
-    comment: options.comment === true,
+    loc: tsestreeOptions.loc === true,
+    range: tsestreeOptions.range === true,
+    allowInvalidAST: tsestreeOptions.allowInvalidAST === true,
+    code,
+    codeFullText,
+    comment: tsestreeOptions.comment === true,
     comments: [],
-    createDefaultProgram: options.createDefaultProgram === true,
     debugLevel:
-      options.debugLevel === true
+      tsestreeOptions.debugLevel === true
         ? new Set(['typescript-eslint'])
-        : Array.isArray(options.debugLevel)
-        ? new Set(options.debugLevel)
-        : new Set(),
+        : Array.isArray(tsestreeOptions.debugLevel)
+          ? new Set(tsestreeOptions.debugLevel)
+          : new Set(),
     errorOnTypeScriptSyntacticAndSemanticIssues: false,
-    errorOnUnknownASTType: options.errorOnUnknownASTType === true,
-    EXPERIMENTAL_useSourceOfProjectReferenceRedirect:
-      options.EXPERIMENTAL_useSourceOfProjectReferenceRedirect === true,
+    errorOnUnknownASTType: tsestreeOptions.errorOnUnknownASTType === true,
     extraFileExtensions:
-      Array.isArray(options.extraFileExtensions) &&
-      options.extraFileExtensions.every(ext => typeof ext === 'string')
-        ? options.extraFileExtensions
+      Array.isArray(tsestreeOptions.extraFileExtensions) &&
+      tsestreeOptions.extraFileExtensions.every(ext => typeof ext === 'string')
+        ? tsestreeOptions.extraFileExtensions
         : [],
-    filePath: ensureAbsolutePath(
-      typeof options.filePath === 'string' && options.filePath !== '<input>'
-        ? options.filePath
-        : getFileName(options.jsx),
-      tsconfigRootDir,
-    ),
-    jsx: options.jsx === true,
-    loc: options.loc === true,
+    filePath,
+    jsDocParsingMode,
+    jsx: tsestreeOptions.jsx === true,
     log:
-      typeof options.loggerFn === 'function'
-        ? options.loggerFn
-        : options.loggerFn === false
-        ? (): void => {}
-        : console.log, // eslint-disable-line no-console
-    moduleResolver: options.moduleResolver ?? '',
-    preserveNodeMaps: options.preserveNodeMaps !== false,
-    programs: Array.isArray(options.programs) ? options.programs : null,
-    projects: [],
-    range: options.range === true,
-    singleRun: inferSingleRun(options),
-    tokens: options.tokens === true ? [] : null,
+      typeof tsestreeOptions.loggerFn === 'function'
+        ? tsestreeOptions.loggerFn
+        : tsestreeOptions.loggerFn === false
+          ? (): void => {} // eslint-disable-line @typescript-eslint/no-empty-function
+          : console.log, // eslint-disable-line no-console
+    preserveNodeMaps: tsestreeOptions.preserveNodeMaps !== false,
+    programs: Array.isArray(tsestreeOptions.programs)
+      ? tsestreeOptions.programs
+      : null,
+    projects: new Map(),
+    projectService:
+      tsestreeOptions.projectService ||
+      (tsestreeOptions.project &&
+        tsestreeOptions.projectService !== false &&
+        process.env.TYPESCRIPT_ESLINT_PROJECT_SERVICE === 'true')
+        ? (TSSERVER_PROJECT_SERVICE ??= createProjectService(
+            tsestreeOptions.projectService,
+            jsDocParsingMode,
+            tsconfigRootDir,
+          ))
+        : undefined,
+    setExternalModuleIndicator:
+      tsestreeOptions.sourceType === 'module' ||
+      (tsestreeOptions.sourceType == null && extension === ts.Extension.Mjs) ||
+      (tsestreeOptions.sourceType == null && extension === ts.Extension.Mts)
+        ? (file): void => {
+            file.externalModuleIndicator = true;
+          }
+        : undefined,
+    singleRun,
+    suppressDeprecatedPropertyWarnings:
+      tsestreeOptions.suppressDeprecatedPropertyWarnings ??
+      process.env.NODE_ENV !== 'test',
+    tokens: tsestreeOptions.tokens === true ? [] : null,
+    tsconfigMatchCache: (TSCONFIG_MATCH_CACHE ??= new ExpiringCache(
+      singleRun
+        ? 'Infinity'
+        : (tsestreeOptions.cacheLifetime?.glob ??
+          DEFAULT_TSCONFIG_CACHE_DURATION_SECONDS),
+    )),
     tsconfigRootDir,
   };
 
@@ -85,8 +157,8 @@ export function createParseSettings(
     debug.enable(namespaces.join(','));
   }
 
-  if (Array.isArray(options.programs)) {
-    if (!options.programs.length) {
+  if (Array.isArray(tsestreeOptions.programs)) {
+    if (!tsestreeOptions.programs.length) {
       throw new Error(
         `You have set parserOptions.programs to an empty array. This will cause all files to not be found in existing programs. Either provide one or more existing TypeScript Program instances in the array, or remove the parserOptions.programs setting.`,
       );
@@ -96,41 +168,50 @@ export function createParseSettings(
     );
   }
 
-  // Providing a program overrides project resolution
-  if (!parseSettings.programs) {
-    const projectFolderIgnoreList = (
-      options.projectFolderIgnoreList ?? ['**/node_modules/**']
-    )
-      .reduce<string[]>((acc, folder) => {
-        if (typeof folder === 'string') {
-          acc.push(folder);
-        }
-        return acc;
-      }, [])
-      // prefix with a ! for not match glob
-      .map(folder => (folder.startsWith('!') ? folder : `!${folder}`));
-
-    parseSettings.projects = prepareAndTransformProjects(
+  // Providing a program or project service overrides project resolution
+  if (!parseSettings.programs && !parseSettings.projectService) {
+    parseSettings.projects = resolveProjectList({
+      cacheLifetime: tsestreeOptions.cacheLifetime,
+      project: getProjectConfigFiles(parseSettings, tsestreeOptions.project),
+      projectFolderIgnoreList: tsestreeOptions.projectFolderIgnoreList,
+      singleRun: parseSettings.singleRun,
       tsconfigRootDir,
-      options.project,
-      projectFolderIgnoreList,
-    );
+    });
   }
 
-  warnAboutTSVersion(parseSettings);
+  // No type-aware linting which means that cross-file (or even same-file) JSDoc is useless
+  // So in this specific case we default to 'none' if no value was provided
+  if (
+    tsestreeOptions.jsDocParsingMode == null &&
+    parseSettings.projects.size === 0 &&
+    parseSettings.programs == null &&
+    parseSettings.projectService == null
+  ) {
+    parseSettings.jsDocParsingMode = JSDocParsingMode.ParseNone;
+  }
+
+  warnAboutTSVersion(parseSettings, passedLoggerFn);
 
   return parseSettings;
+}
+
+export function clearTSConfigMatchCache(): void {
+  TSCONFIG_MATCH_CACHE?.clear();
+}
+
+export function clearTSServerProjectService(): void {
+  TSSERVER_PROJECT_SERVICE = null;
 }
 
 /**
  * Ensures source code is a string.
  */
-function enforceString(code: unknown): string {
-  if (typeof code !== 'string') {
-    return String(code);
-  }
-
-  return code;
+function enforceCodeString(code: unknown): string {
+  return isSourceFile(code)
+    ? code.getFullText(code)
+    : typeof code === 'string'
+      ? code
+      : String(code);
 }
 
 /**
@@ -138,64 +219,7 @@ function enforceString(code: unknown): string {
  *
  * Even if jsx option is set in typescript compiler, filename still has to
  * contain .tsx file extension.
- *
- * @param options Parser options
  */
 function getFileName(jsx?: boolean): string {
   return jsx ? 'estree.tsx' : 'estree.ts';
-}
-
-function getTsconfigPath(
-  tsconfigPath: string,
-  tsconfigRootDir: string,
-): CanonicalPath {
-  return getCanonicalFileName(
-    ensureAbsolutePath(tsconfigPath, tsconfigRootDir),
-  );
-}
-
-/**
- * Normalizes, sanitizes, resolves and filters the provided project paths
- */
-function prepareAndTransformProjects(
-  tsconfigRootDir: string,
-  projectsInput: string | string[] | undefined,
-  ignoreListInput: string[],
-): CanonicalPath[] {
-  const sanitizedProjects: string[] = [];
-
-  // Normalize and sanitize the project paths
-  if (typeof projectsInput === 'string') {
-    sanitizedProjects.push(projectsInput);
-  } else if (Array.isArray(projectsInput)) {
-    for (const project of projectsInput) {
-      if (typeof project === 'string') {
-        sanitizedProjects.push(project);
-      }
-    }
-  }
-
-  if (sanitizedProjects.length === 0) {
-    return [];
-  }
-
-  // Transform glob patterns into paths
-  const nonGlobProjects = sanitizedProjects.filter(project => !isGlob(project));
-  const globProjects = sanitizedProjects.filter(project => isGlob(project));
-  const uniqueCanonicalProjectPaths = new Set(
-    nonGlobProjects
-      .concat(
-        globSync([...globProjects, ...ignoreListInput], {
-          cwd: tsconfigRootDir,
-        }),
-      )
-      .map(project => getTsconfigPath(project, tsconfigRootDir)),
-  );
-
-  log(
-    'parserOptions.project (excluding ignored) matched projects: %s',
-    uniqueCanonicalProjectPaths,
-  );
-
-  return Array.from(uniqueCanonicalProjectPaths);
 }

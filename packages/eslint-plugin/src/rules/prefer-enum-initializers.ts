@@ -1,17 +1,16 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule } from '../util';
 
-type MessageIds = 'defineInitializer' | 'defineInitializerSuggestion';
+export type MessageIds = 'defineInitializer' | 'defineInitializerSuggestion';
 
-export default util.createRule<[], MessageIds>({
+export default createRule<[], MessageIds>({
   name: 'prefer-enum-initializers',
   meta: {
     type: 'suggestion',
     docs: {
       description:
         'Require each enum member value to be explicitly initialized',
-      recommended: false,
     },
     hasSuggestions: true,
     messages: {
@@ -24,14 +23,12 @@ export default util.createRule<[], MessageIds>({
   },
   defaultOptions: [],
   create(context) {
-    const sourceCode = context.getSourceCode();
-
     function TSEnumDeclaration(node: TSESTree.TSEnumDeclaration): void {
-      const { members } = node;
+      const { members } = node.body;
 
       members.forEach((member, index) => {
         if (member.initializer == null) {
-          const name = sourceCode.getText(member);
+          const name = context.sourceCode.getText(member);
           context.report({
             node: member,
             messageId: 'defineInitializer',

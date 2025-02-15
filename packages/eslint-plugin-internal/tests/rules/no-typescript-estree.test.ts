@@ -1,61 +1,45 @@
-import rule from '../../src/rules/no-typescript-estree-import';
-import { batchedSingleLineTests, RuleTester } from '../RuleTester';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    sourceType: 'module',
-  },
-});
+import rule from '../../src/rules/no-typescript-estree-import';
+
+const ruleTester = new RuleTester();
 
 ruleTester.run('no-typescript-estree-import', rule, {
+  invalid: [
+    {
+      code: "import { foo } from '@typescript-eslint/typescript-estree';",
+      errors: [{ messageId: 'dontImportPackage' }],
+      output: "import { foo } from '@typescript-eslint/utils';",
+    },
+    {
+      code: "import foo from '@typescript-eslint/typescript-estree';",
+      errors: [{ messageId: 'dontImportPackage' }],
+      output: "import foo from '@typescript-eslint/utils';",
+    },
+    {
+      code: "import * as foo from '@typescript-eslint/typescript-estree';",
+      errors: [{ messageId: 'dontImportPackage' }],
+      output: "import * as foo from '@typescript-eslint/utils';",
+    },
+    {
+      code: "import { foo } from '@typescript-eslint/types';",
+      errors: [{ messageId: 'dontImportPackage' }],
+      output: "import { foo } from '@typescript-eslint/utils';",
+    },
+    {
+      code: "import foo from '@typescript-eslint/types';",
+      errors: [{ messageId: 'dontImportPackage' }],
+      output: "import foo from '@typescript-eslint/utils';",
+    },
+    {
+      code: "import * as foo from '@typescript-eslint/types';",
+      errors: [{ messageId: 'dontImportPackage' }],
+      output: "import * as foo from '@typescript-eslint/utils';",
+    },
+  ],
   valid: [
     "import { foo } from '@typescript-eslint/utils';",
     "import foo from '@typescript-eslint/utils';",
     "import * as foo from '@typescript-eslint/utils';",
   ],
-  invalid: batchedSingleLineTests({
-    code: `
-import { foo } from '@typescript-eslint/typescript-estree';
-import foo from '@typescript-eslint/typescript-estree';
-import * as foo from '@typescript-eslint/typescript-estree';
-import { foo } from '@typescript-eslint/types';
-import foo from '@typescript-eslint/types';
-import * as foo from '@typescript-eslint/types';
-    `,
-    output: `
-import { foo } from '@typescript-eslint/utils';
-import foo from '@typescript-eslint/utils';
-import * as foo from '@typescript-eslint/utils';
-import { foo } from '@typescript-eslint/utils';
-import foo from '@typescript-eslint/utils';
-import * as foo from '@typescript-eslint/utils';
-    `,
-    errors: [
-      {
-        messageId: 'dontImportPackage',
-        line: 2,
-      },
-      {
-        messageId: 'dontImportPackage',
-        line: 3,
-      },
-      {
-        messageId: 'dontImportPackage',
-        line: 4,
-      },
-      {
-        messageId: 'dontImportPackage',
-        line: 5,
-      },
-      {
-        messageId: 'dontImportPackage',
-        line: 6,
-      },
-      {
-        messageId: 'dontImportPackage',
-        line: 7,
-      },
-    ],
-  }),
 });

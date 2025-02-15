@@ -1,22 +1,41 @@
-declare type System = import('typescript').System;
-declare type CompilerOptions = import('typescript').CompilerOptions;
-declare type CustomTransformers = import('typescript').CustomTransformers;
-declare type LanguageServiceHost = import('typescript').LanguageServiceHost;
-declare type CompilerHost = import('typescript').CompilerHost;
-declare type SourceFile = import('typescript').SourceFile;
-declare type TS = typeof import('typescript');
+/**********************************************
+ *      DO NOT MODIFY THIS FILE MANUALLY      *
+ *                                            *
+ *     THIS FILE HAS BEEN FETCHED FROM THE    *
+ *      TYPESCRIPT PLAYGROUND SOURCE CODE.    *
+ *                                            *
+ *    YOU CAN REGENERATE THESE FILES USING    *
+ *          yarn generate-website-dts         *
+ **********************************************/
+
+import type * as ts from 'typescript';
+type System = ts.System;
+type CompilerOptions = ts.CompilerOptions;
+type CustomTransformers = ts.CustomTransformers;
+type LanguageServiceHost = ts.LanguageServiceHost;
+type CompilerHost = ts.CompilerHost;
+type SourceFile = ts.SourceFile;
+type TS = typeof ts;
+type FetchLike = (url: string) => Promise<{
+  json(): Promise<any>;
+  text(): Promise<string>;
+}>;
+interface LocalStorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
 export interface VirtualTypeScriptEnvironment {
   sys: System;
-  languageService: import('typescript').LanguageService;
-  getSourceFile: (
-    fileName: string,
-  ) => import('typescript').SourceFile | undefined;
+  languageService: ts.LanguageService;
+  getSourceFile: (fileName: string) => ts.SourceFile | undefined;
   createFile: (fileName: string, content: string) => void;
   updateFile: (
     fileName: string,
     content: string,
-    replaceTextSpan?: import('typescript').TextSpan,
+    replaceTextSpan?: ts.TextSpan,
   ) => void;
+  deleteFile: (fileName: string) => void;
 }
 /**
  * Makes a virtual copy of the TypeScript environment. This is the main API you want to be using with
@@ -37,7 +56,8 @@ export declare function createVirtualTypeScriptEnvironment(
 ): VirtualTypeScriptEnvironment;
 /**
  * Grab the list of lib files for a particular target, will return a bit more than necessary (by including
- * the dom) but that's OK
+ * the dom) but that's OK, we're really working with the constraint that you can't get a list of files
+ * when running in a browser.
  *
  * @param target The compiler settings target baseline
  * @param ts A copy of the TypeScript module
@@ -49,10 +69,14 @@ export declare const knownLibFilesForCompilerOptions: (
 /**
  * Sets up a Map with lib contents by grabbing the necessary files from
  * the local copy of typescript via the file system.
+ *
+ * The first two args are un-used, but kept around so as to not cause a
+ * semver major bump for no gain to module users.
  */
 export declare const createDefaultMapFromNodeModules: (
-  compilerOptions: CompilerOptions,
-  ts?: typeof import('typescript') | undefined,
+  _compilerOptions: CompilerOptions,
+  _ts?: typeof ts,
+  tsLibDirectory?: string,
 ) => Map<string, string>;
 /**
  * Adds recursively files from the FS into the map based on the folder
@@ -65,6 +89,10 @@ export declare const addAllFilesFromFolder: (
 export declare const addFilesForTypesIntoFolder: (
   map: Map<string, string>,
 ) => void;
+export interface LZString {
+  compressToUTF16(input: string): string;
+  decompressFromUTF16(compressed: string): string;
+}
 /**
  * Create a virtual FS Map with the lib files from a particular TypeScript
  * version based on the target, Always includes dom ATM.
@@ -82,9 +110,9 @@ export declare const createDefaultMapFromCDN: (
   version: string,
   cache: boolean,
   ts: TS,
-  lzstring?: any | undefined,
-  fetcher?: typeof fetch | undefined,
-  storer?: Storage | undefined,
+  lzstring?: LZString,
+  fetcher?: FetchLike,
+  storer?: LocalStorageLike,
 ) => Promise<Map<string, string>>;
 /**
  * Creates an in-memory System object which can be used in a TypeScript program, this
@@ -100,6 +128,7 @@ export declare function createFSBackedSystem(
   files: Map<string, string>,
   _projectRoot: string,
   ts: TS,
+  tsLibDirectory?: string,
 ): System;
 /**
  * Creates an in-memory CompilerHost -which is essentially an extra wrapper to System
@@ -113,6 +142,7 @@ export declare function createVirtualCompilerHost(
 ): {
   compilerHost: CompilerHost;
   updateFile: (sourceFile: SourceFile) => boolean;
+  deleteFile: (sourceFile: SourceFile) => boolean;
 };
 /**
  * Creates an object which can host a language service against the virtual file-system
@@ -125,6 +155,7 @@ export declare function createVirtualLanguageServiceHost(
   customTransformers?: CustomTransformers,
 ): {
   languageServiceHost: LanguageServiceHost;
-  updateFile: (sourceFile: import('typescript').SourceFile) => void;
+  updateFile: (sourceFile: ts.SourceFile) => void;
+  deleteFile: (sourceFile: ts.SourceFile) => void;
 };
 export {};

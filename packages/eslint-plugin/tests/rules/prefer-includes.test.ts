@@ -1,13 +1,16 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/prefer-includes';
-import { getFixturesRootDir, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootPath = getFixturesRootDir();
 
 const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    tsconfigRootDir: rootPath,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootPath,
+    },
   },
 });
 
@@ -103,12 +106,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -116,12 +119,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) != -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -129,12 +132,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) > -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -142,12 +145,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) >= 0;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
 
     // negative
@@ -157,12 +160,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) === -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           !a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -170,12 +173,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) == -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           !a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -183,12 +186,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) <= -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           !a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -196,12 +199,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) < 0;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: string): void {
           !a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -210,6 +213,7 @@ ruleTester.run('prefer-includes', rule, {
         }
       `,
       errors: [{ messageId: 'preferIncludes' }],
+      output: null,
     },
     {
       code: `
@@ -218,6 +222,7 @@ ruleTester.run('prefer-includes', rule, {
         }
       `,
       errors: [{ messageId: 'preferIncludes' }],
+      output: null,
     },
 
     // RegExp#test
@@ -227,12 +232,39 @@ ruleTester.run('prefer-includes', rule, {
           /bar/.test(a);
         }
       `,
+      errors: [{ messageId: 'preferStringIncludes' }],
       output: `
         function f(a: string): void {
           a.includes('bar');
         }
       `,
+    },
+    // test SequenceExpression
+    {
+      code: `
+        function f(a: string): void {
+          /bar/.test((1 + 1, a));
+        }
+      `,
       errors: [{ messageId: 'preferStringIncludes' }],
+      output: `
+        function f(a: string): void {
+          (1 + 1, a).includes('bar');
+        }
+      `,
+    },
+    {
+      code: `
+        function f(a: string): void {
+          /\\0'\\\\\\n\\r\\v\\t\\f/.test(a);
+        }
+      `,
+      errors: [{ messageId: 'preferStringIncludes' }],
+      output: `
+        function f(a: string): void {
+          a.includes('\\0\\'\\\\\\n\\r\\v\\t\\f');
+        }
+      `,
     },
     {
       code: `
@@ -241,13 +273,13 @@ ruleTester.run('prefer-includes', rule, {
           pattern.test(a);
         }
       `,
+      errors: [{ messageId: 'preferStringIncludes' }],
       output: `
         const pattern = new RegExp('bar');
         function f(a: string): void {
           a.includes('bar');
         }
       `,
-      errors: [{ messageId: 'preferStringIncludes' }],
     },
     {
       code: `
@@ -256,13 +288,13 @@ ruleTester.run('prefer-includes', rule, {
           pattern.test(a + b);
         }
       `,
+      errors: [{ messageId: 'preferStringIncludes' }],
       output: `
         const pattern = /bar/;
         function f(a: string, b: string): void {
           (a + b).includes('bar');
         }
       `,
-      errors: [{ messageId: 'preferStringIncludes' }],
     },
 
     // type variation
@@ -272,12 +304,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: any[]): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -285,12 +317,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: ReadonlyArray<any>): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -298,12 +330,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Int8Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -311,12 +343,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Int16Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -324,12 +356,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Int32Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -337,12 +369,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Uint8Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -350,12 +382,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Uint16Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -363,12 +395,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Uint32Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -376,12 +408,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Float32Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -389,12 +421,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Float64Array): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -402,12 +434,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f<T>(a: T[] | ReadonlyArray<T>): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -428,6 +460,7 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f<
           T,
@@ -446,7 +479,6 @@ ruleTester.run('prefer-includes', rule, {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -458,6 +490,7 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         type UserDefined = {
           indexOf(x: any): number;
@@ -467,7 +500,6 @@ ruleTester.run('prefer-includes', rule, {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
     {
       code: `
@@ -475,12 +507,12 @@ ruleTester.run('prefer-includes', rule, {
           a.indexOf(b) !== -1;
         }
       `,
+      errors: [{ messageId: 'preferIncludes' }],
       output: `
         function f(a: Readonly<any[]>): void {
           a.includes(b);
         }
       `,
-      errors: [{ messageId: 'preferIncludes' }],
     },
   ],
 });

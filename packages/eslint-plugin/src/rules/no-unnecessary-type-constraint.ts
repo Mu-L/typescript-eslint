@@ -1,67 +1,62 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as semver from 'semver';
+import { extname } from 'node:path';
 import * as ts from 'typescript';
 
-import * as util from '../util';
+import type { MakeRequired } from '../util';
 
-type MakeRequired<Base, Key extends keyof Base> = Omit<Base, Key> &
-  Required<Pick<Base, Key>>;
+import { createRule } from '../util';
 
 type TypeParameterWithConstraint = MakeRequired<
   TSESTree.TSTypeParameter,
   'constraint'
 >;
 
-const is3dot5 = semver.satisfies(
-  ts.version,
-  `>= 3.5.0 || >= 3.5.1-rc || >= 3.5.0-beta`,
-  {
-    includePrerelease: true,
-  },
-);
-
-const is3dot9 =
-  is3dot5 &&
-  semver.satisfies(ts.version, `>= 3.9.0 || >= 3.9.1-rc || >= 3.9.0-beta`, {
-    includePrerelease: true,
-  });
-
-export default util.createRule({
+export default createRule({
   name: 'no-unnecessary-type-constraint',
   meta: {
+    type: 'suggestion',
     docs: {
       description: 'Disallow unnecessary constraints on generic types',
-      recommended: 'error',
+      recommended: 'recommended',
     },
     hasSuggestions: true,
     messages: {
-      unnecessaryConstraint:
-        'Constraining the generic type `{{name}}` to `{{constraint}}` does nothing and is unnecessary.',
       removeUnnecessaryConstraint:
         'Remove the unnecessary `{{constraint}}` constraint.',
+      unnecessaryConstraint:
+        'Constraining the generic type `{{name}}` to `{{constraint}}` does nothing and is unnecessary.',
     },
     schema: [],
-    type: 'suggestion',
   },
   defaultOptions: [],
   create(context) {
-    if (!is3dot5) {
-      return {};
-    }
-
     // In theory, we could use the type checker for more advanced constraint types...
     // ...but in practice, these types are rare, and likely not worth requiring type info.
     // https://github.com/typescript-eslint/typescript-eslint/pull/2516#discussion_r495731858
-    const unnecessaryConstraints = is3dot9
-      ? new Map([
-          [AST_NODE_TYPES.TSAnyKeyword, 'any'],
-          [AST_NODE_TYPES.TSUnknownKeyword, 'unknown'],
-        ])
-      : new Map([[AST_NODE_TYPES.TSUnknownKeyword, 'unknown']]);
+    const unnecessaryConstraints = new Map([
+      [AST_NODE_TYPES.TSAnyKeyword, 'any'],
+      [AST_NODE_TYPES.TSUnknownKeyword, 'unknown'],
+    ]);
 
-    const inJsx = context.getFilename().toLowerCase().endsWith('tsx');
-    const source = context.getSourceCode();
+    function checkRequiresGenericDeclarationDisambiguation(
+      filename: string,
+    ): boolean {
+      const pathExt = extname(filename).toLocaleLowerCase() as ts.Extension;
+      switch (pathExt) {
+        case ts.Extension.Cts:
+        case ts.Extension.Mts:
+        case ts.Extension.Tsx:
+          return true;
+
+        default:
+          return false;
+      }
+    }
+
+    const requiresGenericDeclarationDisambiguation =
+      checkRequiresGenericDeclarationDisambiguation(context.filename);
 
     const checkNode = (
       node: TypeParameterWithConstraint,
@@ -69,23 +64,25 @@ export default util.createRule({
     ): void => {
       const constraint = unnecessaryConstraints.get(node.constraint.type);
       function shouldAddTrailingComma(): boolean {
-        if (!inArrowFunction || !inJsx) {
+        if (!inArrowFunction || !requiresGenericDeclarationDisambiguation) {
           return false;
         }
         // Only <T>() => {} would need trailing comma
         return (
           (node.parent as TSESTree.TSTypeParameterDeclaration).params.length ===
             1 &&
-          source.getTokensAfter(node)[0].value !== ',' &&
+          context.sourceCode.getTokensAfter(node)[0].value !== ',' &&
           !node.default
         );
       }
 
       if (constraint) {
         context.report({
+          node,
+          messageId: 'unnecessaryConstraint',
           data: {
-            constraint,
             name: node.name.name,
+            constraint,
           },
           suggest: [
             {
@@ -101,8 +98,6 @@ export default util.createRule({
               },
             },
           ],
-          messageId: 'unnecessaryConstraint',
-          node,
         });
       }
     };
