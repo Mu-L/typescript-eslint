@@ -22,11 +22,7 @@ export default {
   workspaces: {
     '.': {
       entry: ['tools/release/changelog-renderer.js', 'tools/scripts/**/*.mts'],
-      ignore: [
-        'jest.config.base.js',
-        'tools/scripts/typings/typescript.d.ts',
-        'typings/*.d.ts',
-      ],
+      ignore: ['tools/scripts/typings/typescript.d.ts', 'typings/*.d.ts'],
       ignoreDependencies: [
         '@babel/code-frame',
         '@babel/core',
@@ -35,8 +31,6 @@ export default {
         '@babel/types',
         '@nx/js',
         '@nx/workspace',
-        'glob',
-        'jest-specific-snapshot',
         'make-dir',
         // imported for type purposes only
         'website',
@@ -96,11 +90,22 @@ export default {
         entry: [
           'tests/**/*.{bench,test,test-d}.?(c|m)ts?(x)',
           'tests/test-utils/serializers/index.ts',
+          'tests/test-utils/custom-matchers/custom-matchers.ts',
+          'tests/test-utils/custom-matchers/vitest-custom-matchers.d.ts',
         ],
       },
     },
     'packages/type-utils': {
       ignore: ['tests/fixtures/**', 'typings/typescript.d.ts'],
+
+      vitest: {
+        config: ['vitest.config.mts'],
+        entry: [
+          'tests/**/*.{bench,test,test-d}.?(c|m)ts?(x)',
+          'tests/test-utils/custom-matchers/custom-matchers.ts',
+          'tests/test-utils/custom-matchers/vitest-custom-matchers.d.ts',
+        ],
+      },
     },
     'packages/typescript-estree': {
       entry: ['src/use-at-your-own-risk.ts'],
@@ -108,7 +113,11 @@ export default {
 
       vitest: {
         config: ['vitest.config.mts'],
-        entry: ['tests/lib/**/*.{bench,test,test-d}.?(c|m)ts?(x)'],
+        entry: [
+          'tests/lib/**/*.{bench,test,test-d}.?(c|m)ts?(x)',
+          'tests/test-utils/custom-matchers/custom-matchers.ts',
+          'tests/test-utils/custom-matchers/vitest-custom-matchers.d.ts',
+        ],
       },
     },
     'packages/utils': {
