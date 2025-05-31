@@ -1,3 +1,35 @@
+## 8.33.0 (2025-05-26)
+
+### 🚀 Features
+
+- create standalone project-service, tsconfig-utils packages ([#11182](https://github.com/typescript-eslint/typescript-eslint/pull/11182))
+
+### ❤️ Thank You
+
+- Josh Goldberg ✨
+
+You can read about our [versioning strategy](https://main--typescript-eslint.netlify.app/users/versioning) and [releases](https://main--typescript-eslint.netlify.app/users/releases) on our website.
+
+## 8.32.1 (2025-05-12)
+
+This was a version bump only for typescript-estree to align it with other projects, there were no code changes.
+
+You can read about our [versioning strategy](https://main--typescript-eslint.netlify.app/users/versioning) and [releases](https://main--typescript-eslint.netlify.app/users/releases) on our website.
+
+## 8.32.0 (2025-05-05)
+
+### 🩹 Fixes
+
+- **typescript-estree:** correct `TSImportType` property name when `assert` ([#11115](https://github.com/typescript-eslint/typescript-eslint/pull/11115))
+- **typescript-estree:** ensure consistent TSMappedType AST shape ([#11086](https://github.com/typescript-eslint/typescript-eslint/pull/11086))
+
+### ❤️ Thank You
+
+- Dima Barabash @dbarabashh
+- overlookmotel
+
+You can read about our [versioning strategy](https://main--typescript-eslint.netlify.app/users/versioning) and [releases](https://main--typescript-eslint.netlify.app/users/releases) on our website.
+
 ## 8.31.1 (2025-04-28)
 
 This was a version bump only for typescript-estree to align it with other projects, there were no code changes.
